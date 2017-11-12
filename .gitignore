@@ -1,0 +1,6 @@
+*.pyc
+*.pl
+.env
+.git
+rouge
+glove*.txt
