@@ -4,6 +4,11 @@ sys.path.append("../rouge-scripts")
 import extract_best_sentences as rge
 from multiprocessing.dummy import Pool as threads
 
+'''
+This module is responsible to take a duc data input dir and target dir, and
+produce a file of datapoints with labels, created greedily using rouge metric with the target
+'''
+
 def fileaslist(f):
   with open(f) as fh: return map(lambda x: x.decode("utf-8").strip(), fh.readlines())
 

@@ -5,6 +5,11 @@ sys.path.append("../SIF/src")
 import extract_embeddings as em 
 import word_tokenize as wt
 
+'''
+This python module is responsible to create embeddings using SIF from
+input json file
+'''
+
 def read_input(fname):
   with open(fname) as f:
     data = json.load(f)
