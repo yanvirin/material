@@ -6,8 +6,8 @@ def makedps(path):
   inputs_path = path
   parent_path = "/".join(path.split("/")[:-1])
   for d in os.listdir(parent_path):
-    if "targets" in d:
-      targets_path = os.path.join(parent_path, d)
+    targets_path = os.path.join(parent_path, d)
+    if "targets" in d and os.path.isdir(targets_path):
       words = int(d.split(".")[1])
       dps_path = targets_path + ".labeled.json"
       #print "running on %s as inputs, %s as targets" % (inputs_path, targets_path)

@@ -49,7 +49,7 @@ def compute_rouge(sentext, refs, ver = 1):
   return rge.parse_rouge(rouge_out, ver)
 
 def sort_results(results):
-  results.sort(cmp=lambda x,y: cmp(x["docset_id"],y["docset_id"])*100+cmp(x["doc_id"],y["doc_id"])*10+cmp(x["sentence_id"],y["sentence_id"]))
+  results.sort(cmp=lambda x,y: cmp(x["docset_id"],y["docset_id"])*100+cmp(x["doc_id"],y["doc_id"])*10+cmp(int(x["sentence_id"]),int(y["sentence_id"])))
 
 # needs input_folder and targets_folder defined in the context
 def runoninput(f):
@@ -72,7 +72,7 @@ def runoninput(f):
 
 if __name__ == "__main__":
   
-  THREADS = 10
+  THREADS = 20
 
   input_folder = sys.argv[1]
   targets_folder = sys.argv[2]
