@@ -3,6 +3,7 @@ from os import listdir
 from os import path
 
 def parse_rouge(f, ver):
+  assert ver == 1 or ver == 2
   with open(f) as r:
     lines = r.readlines()
   idx = 1 if ver == 1 else 5

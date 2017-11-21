@@ -3,20 +3,18 @@ import make_embeddings as em
 sys.path.append("../rouge-scripts")
 import extract_best_sentences as rge
 from multiprocessing.dummy import Pool as threads
+import utils
 
 '''
 This module is responsible to take a duc data input dir and target dir, and
 produce a file of datapoints with labels, created greedily using rouge metric with the target
 '''
 
-def fileaslist(f):
-  with open(f) as fh: return map(lambda x: x.decode("utf-8").strip(), fh.readlines())
-
 # assumes existance of models variable in the context
 def get_embeddings(json_input_file):
   code = abs(hash(json_input_file))
   em.create_embeddings(json_input_file, "/tmp/mds/%d.norm" % code, "/tmp/mds/%d.emb" % code, models)
-  return [[float(n) for n in l.split(" ")] for l in fileaslist("/tmp/mds/%d.emb" % code)]
+  return [[float(n) for n in l.split(" ")] for l in utils.fileaslist("/tmp/mds/%d.emb" % code)]
 
 def quantize(data, numwords):
   sorted_sc_data = sorted(data, key=lambda x: -x["label"])
@@ -30,26 +28,20 @@ def quantize(data, numwords):
 
   return sorted_sc_data
 
-def write2file(text, f):
-  with open(f, "w") as fw: fw.write(text.encode('utf-8'))
-
 def compute_rouge(sentext, refs, ver = 1):
   code = abs(hash(sentext))
   name0 = "/tmp/mds/%d.txt" % code
-  write2file(sentext, name0)
+  utils.write2file(sentext, name0)
   cfgline = name0
   for i, sens in enumerate(refs):
     name1 = "/tmp/mds/%d.txt%d" % (code, i)
-    write2file("\n".join(sens), name1)
+    utils.write2file("\n".join(sens), name1)
     cfgline = cfgline + " " + name1
   cfgfile = "/tmp/mds/%d.cfg" % code
-  write2file(cfgline, cfgfile)
+  utils.write2file(cfgline, cfgfile)
   rouge_out = "/tmp/mds/%d.rge" % code
   rge.rouge(".", 1000, cfgfile, rouge_out)
   return rge.parse_rouge(rouge_out, ver)
-
-def sort_results(results):
-  results.sort(cmp=lambda x,y: cmp(x["docset_id"],y["docset_id"])*100+cmp(x["doc_id"],y["doc_id"])*10+cmp(int(x["sentence_id"]),int(y["sentence_id"])))
 
 # needs input_folder and targets_folder defined in the context
 def runoninput(f):
@@ -96,7 +88,7 @@ if __name__ == "__main__":
   pool = threads(THREADS)
   results = pool.map(runoninput, os.listdir(input_folder))
   results = [item for sb in results for item in sb]
-  sort_results(results)
+  utils.sort_results(results)
  
   # write the results out
   with open(output_file, 'w') as outfile: json.dump(results, outfile)
