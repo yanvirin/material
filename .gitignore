@@ -4,3 +4,6 @@
 .git
 rouge
 glove*.txt
+*.out
+*.log
+*.err
