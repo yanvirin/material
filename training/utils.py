@@ -6,5 +6,6 @@ def write2file(text, f):
   with open(f, "w") as fw: fw.write(text.encode('utf-8'))
 
 def sort_results(results):
-  results.sort(cmp=lambda x,y: cmp(x["docset_id"],y["docset_id"])*100+cmp(x["doc_id"],y["doc_id"])*10+cmp(int(x["sentence_id"]),int(y["sentence_id"])))
-
+  for r in results:
+    r.sort(cmp=lambda x,y: cmp(x["docset_id"],y["docset_id"])*100+cmp(x["doc_id"],y["doc_id"])*10+cmp(int(x["sentence_id"]),int(y["sentence_id"])))
+  results.sort(cmp=lambda x,y: cmp(x[0]["docset_id"],y[0]["docset_id"]))

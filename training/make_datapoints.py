@@ -1,7 +1,7 @@
 import sys, os, json
 import make_embeddings as em
 sys.path.append("../rouge-scripts")
-import extract_best_sentences as rge
+import rouge as rge
 from multiprocessing.dummy import Pool as threads
 import utils
 
@@ -40,7 +40,7 @@ def compute_rouge(sentext, refs, ver = 1):
   cfgfile = "/tmp/mds/%d.cfg" % code
   utils.write2file(cfgline, cfgfile)
   rouge_out = "/tmp/mds/%d.rge" % code
-  rge.rouge(".", 1000, cfgfile, rouge_out)
+  rge.rouge(1000, cfgfile, rouge_out)
   return rge.parse_rouge(rouge_out, ver)
 
 # needs input_folder and targets_folder defined in the context
@@ -87,8 +87,8 @@ if __name__ == "__main__":
 
   pool = threads(THREADS)
   results = pool.map(runoninput, os.listdir(input_folder))
-  results = [item for sb in results for item in sb]
   utils.sort_results(results)
  
   # write the results out
-  with open(output_file, 'w') as outfile: json.dump(results, outfile)
+  with open(output_file, 'w') as outfile:
+    for r in results: json.dump(r, outfile)

@@ -1,16 +1,8 @@
 import sys,os
 from os import listdir
 from os import path
-
-def parse_rouge(f, ver):
-  assert ver == 1 or ver == 2
-  with open(f) as r:
-    lines = r.readlines()
-  idx = 1 if ver == 1 else 5
-  return float(lines[idx].split(" ")[3])
-
-def rouge(rouge_dir, max_words, config_file, rouge_out):
-  os.system("%s/ROUGE-1.5.5.pl -e data -n1 -n2 -l %d -z SPL %s > %s" % (rouge_dir, max_words, config_file, rouge_out))
+from rouge import rouge
+from rouge import parse_rouge
 
 if __name__ == "__main__":
 
@@ -20,7 +12,7 @@ if __name__ == "__main__":
   dataset = sys.argv[1]
   ver = int(sys.argv[2])
   d = sys.argv[3]
-  
+ 
   content_file = "/tmp/rouge-model%s.txt" % d
   config_file = "/tmp/rouge-config%s.txt" % d
   source_sen_file = "/tmp/rouge-source-sen%s.txt" % d

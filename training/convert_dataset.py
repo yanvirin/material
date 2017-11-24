@@ -2,7 +2,7 @@ import os, sys, json
 from multiprocessing.dummy import Pool as threads
 import utils
 sys.path.append("../rouge-scripts")
-from extract_best_sentences import parse_rouge
+from rouge import parse_rouge
 
 MDS_TYPE = "mds"
 SDS_TYPE = "sds"
@@ -39,6 +39,8 @@ def labeled(srf, orig_best = None, orig_docset_id = None):
   min_rge = options.min_rge
   output = []
   n = 0
+  curr = None
+  last_docset_id = None
   for source in os.listdir(srf):
     base = ".".join(source.split(".")[:-1])
     embedding = os.path.join(srf, base+".emd")
@@ -49,6 +51,10 @@ def labeled(srf, orig_best = None, orig_docset_id = None):
       if parse_rouge(os.path.join(srf, base+".rge"), 2) < min_rge: continue
       best = orig_best if orig_best else set(utils.fileaslist(os.path.join(srf, "%s.best%d" % (base,ver))))
       docset_id = orig_docset_id if orig_docset_id else doc_id
+      if docset_id != last_docset_id:
+        if len(curr) > 0: output.append(curr)
+        curr = []
+        last_docset_id = docset_id
       for i, sen in enumerate(sentences):
         d = dict()
         n += 1
@@ -58,7 +64,8 @@ def labeled(srf, orig_best = None, orig_docset_id = None):
         d["embedding"] = embeddings[i]
         d["label"] = 1 if sen in best else 0
         d["text"] = sentences[i]
-        if len(d) > 0: output.append(d)
+        if len(d) > 0: curr.append(d)
+  output.append(curr)  
   return output
 
 def runoninput(datapoint_folder):
@@ -88,10 +95,10 @@ if __name__ == "__main__":
   # go over the dataset and fill results with json dictionaries
   pool = threads(THREADS)
   output = pool.map(runoninput, filter(lambda x: "README" not in x, os.listdir(dataset_folder)))
-  results = [item for sublist in output for item in sublist]
- 
+  results = [item for sublist in output for item in sublist] 
   utils.sort_results(results)
  
   # write the results
-  with open(output_file, 'w') as outfile: json.dump(output, outfile)
+  with open(output_file, 'w') as outfile: 
+    for r in results: json.dump(r, outfile)
 

@@ -1,6 +1,7 @@
 import sys,os
 from os import listdir
 from os import path
+from rouge import rouge
 
 MAX_WORDS=100
 MIN_WORDS=3
@@ -30,6 +31,6 @@ if d:
     if s.endswith(".nrm"):
       with open(config_file, "w") as w:
         w.write("%s %s" % (path.join(dataset, d, "sources", s), content_file))
-      os.system("./ROUGE-1.5.5.pl -e data -n1 -n2 -l %d -z SPL %s > %s" % (MAX_WORDS, config_file, path.join(dataset, d, "sources", s+".rouge")))
+      rouge(MAX_WORDS, config_file, path.join(dataset, d, "sources", ".".join(s.split(".")[:-1])+".rge"))
   os.system("rm %s" % content_file)
   os.system("rm %s" % config_file)
