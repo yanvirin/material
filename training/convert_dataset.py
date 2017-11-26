@@ -39,7 +39,7 @@ def labeled(srf, orig_best = None, orig_docset_id = None):
   min_rge = options.min_rge
   output = []
   n = 0
-  curr = None
+  curr = []
   last_docset_id = None
   for source in os.listdir(srf):
     base = ".".join(source.split(".")[:-1])
@@ -54,7 +54,7 @@ def labeled(srf, orig_best = None, orig_docset_id = None):
       if docset_id != last_docset_id:
         if len(curr) > 0: output.append(curr)
         curr = []
-        last_docset_id = docset_id
+      last_docset_id = docset_id
       for i, sen in enumerate(sentences):
         d = dict()
         n += 1
@@ -65,7 +65,7 @@ def labeled(srf, orig_best = None, orig_docset_id = None):
         d["label"] = 1 if sen in best else 0
         d["text"] = sentences[i]
         if len(d) > 0: curr.append(d)
-  output.append(curr)  
+  if len(curr) > 0: output.append(curr)  
   return output
 
 def runoninput(datapoint_folder):
@@ -96,9 +96,4 @@ if __name__ == "__main__":
   pool = threads(THREADS)
   output = pool.map(runoninput, filter(lambda x: "README" not in x, os.listdir(dataset_folder)))
   results = [item for sublist in output for item in sublist] 
-  utils.sort_results(results)
- 
-  # write the results
-  with open(output_file, 'w') as outfile: 
-    for r in results: json.dump(r, outfile)
-
+  utils.save_results(results, output_file)

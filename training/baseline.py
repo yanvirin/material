@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append("../rouge-scripts")
-import extract_best_sentences as rge
+import rouge as rge
 import utils
 
 rouge_dir = "../rouge"
@@ -43,6 +43,6 @@ eval_writer.close()
 print "created the evaluation file, running rouge..."
 
 os.chdir(rouge_dir)
-rge.rouge(rouge_dir, 1000, eval_path, eval_out)
+rge.rouge(1000, eval_path, eval_out)
 
 print "done."

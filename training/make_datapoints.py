@@ -87,8 +87,4 @@ if __name__ == "__main__":
 
   pool = threads(THREADS)
   results = pool.map(runoninput, os.listdir(input_folder))
-  utils.sort_results(results)
- 
-  # write the results out
-  with open(output_file, 'w') as outfile:
-    for r in results: json.dump(r, outfile)
+  utils.save_results(results, output_file)
