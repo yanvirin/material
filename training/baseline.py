@@ -32,12 +32,16 @@ for dp in os.listdir(dataset):
     base = ".".join(best.split(".")[:-1])
     s = base+".best"+ver
     text_path = os.path.join(sources, base+".nrm")
+    cont_path = os.path.join(dataset, dp, "content.txt.nrm")
     if os.path.exists(os.path.join(sources, s)) and os.path.exists(text_path):
       if rge.parse_rouge(os.path.join(sources, base+".rge"), 2) < min_rge: continue
       can_text = "\n".join(utils.fileaslist(text_path)[:FIRST_N_LINES])
+      ref_text = "\n".join([x for x in utils.fileaslist(cont_path) if len(x.split(" "))>3][:FIRST_N_LINES])
       can_path = "/tmp/mds/%s.can.txt" % base
+      ref_path = "/tmp/mds/%s.ref.txt" % base
       utils.write2file(can_text, can_path)
-      eval_writer.write("%s %s\n" % (os.path.join(sources, s), can_path))
+      utils.write2file(ref_text, ref_path)
+      eval_writer.write("%s %s\n" % (can_path, ref_path))
 
 eval_writer.close()
 print "created the evaluation file, running rouge..."
