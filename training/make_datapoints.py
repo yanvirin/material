@@ -1,6 +1,6 @@
 import sys, os, json
-import make_embeddings as em
 sys.path.append("../rouge-scripts")
+import make_embeddings as em
 import rouge as rge
 from multiprocessing.dummy import Pool as threads
 import utils
@@ -13,39 +13,27 @@ produce a file of datapoints with labels, created greedily using rouge metric wi
 # assumes existance of models variable in the context
 def get_embeddings(json_input_file):
   code = abs(hash(json_input_file))
-  em.create_embeddings(json_input_file, "/tmp/mds/%d.norm" % code, "/tmp/mds/%d.emb" % code, models)
-  return [[float(n) for n in l.split(" ")] for l in utils.fileaslist("/tmp/mds/%d.emb" % code)]
+  em.create_embeddings(json_input_file, "%s/mds/%d.norm" % (TMP, code), "%s/mds/%d.emb" % (TMP, code), models)
+  return [[float(n) for n in l.split(" ")] for l in utils.fileaslist("%s/mds/%d.emb" % (TMP, code))]
 
-def quantize(data, numwords):
-  sorted_sc_data = sorted(data, key=lambda x: -x["label"])
-  lbl = 1
-  wordcount = 0
-  for sen in sorted_sc_data:
-    sen["label"] = lbl
-    wordcount += len(em.wt.normalize(sen["text"]).split(" "))
-    if wordcount > numwords:
-      lbl = 0
-
-  return sorted_sc_data
-
-def compute_rouge(sentext, refs, ver = 1):
+def compute_rouge(sent_list, refs, ver = 1):
+  sentext = "\n".join(sent_list)
   code = abs(hash(sentext))
-  name0 = "/tmp/mds/%d.txt" % code
+  name0 = "%s/mds/%d.txt" % (TMP, code)
   utils.write2file(sentext, name0)
   cfgline = name0
   for i, sens in enumerate(refs):
-    name1 = "/tmp/mds/%d.txt%d" % (code, i)
+    name1 = "%s/mds/%d.txt%d" % (TMP, code, i)
     utils.write2file("\n".join(sens), name1)
     cfgline = cfgline + " " + name1
-  cfgfile = "/tmp/mds/%d.cfg" % code
+  cfgfile = "%s/mds/%d.cfg" % (TMP, code)
   utils.write2file(cfgline, cfgfile)
-  rouge_out = "/tmp/mds/%d.rge" % code
+  rouge_out = "%s/mds/%d.rge" % (TMP, code)
   rge.rouge(1000, cfgfile, rouge_out)
   return rge.parse_rouge(rouge_out, ver)
 
 # needs input_folder and targets_folder defined in the context
 def runoninput(f):
-  print "processing file %s" % f
   infile = os.path.join(input_folder, f)
   trgfile = ".".join(f.split(".")[:-2] + ["target", "json"])
 
@@ -55,24 +43,42 @@ def runoninput(f):
   # compute rouge
   data = zip(em.read_input(infile), get_embeddings(infile))
   
-  for sen, emb in data:
-    sen["embedding"] = emb
-    sen["label"] = compute_rouge(sen["text"], refsums)
-
-  # quantize the label scores
-  return quantize([x[0] for x in data], numwords)
+  text = []
+  count = 0
+  while True:
+    changed = False
+    for sen, emb in data:
+      sen["embedding"] = emb
+      sen_text = sen["text"]
+      if sen_text not in text:
+        sen["label"] = compute_rouge(text + [sen["text"]], refsums)
+        changed = True
+      else:
+        sen["label"] = -1
+    if not changed: break
+    best = max(data, key=lambda x:x[0]["label"])[0]["text"]
+    text.append(best)
+    count += len(best.split(" "))
+    if count > numwords: break
+   
+  results = [d[0] for d in data]
+  for sen in results: sen["label"] = 1 if sen["text"] in text else 0
+  print "processed file %s" % f
+  return results
 
 if __name__ == "__main__":
   
-  THREADS = 20
+  THREADS = 50
 
   input_folder = sys.argv[1]
   targets_folder = sys.argv[2]
   output_file = sys.argv[3]
   numwords = int(sys.argv[4])
 
-  os.system("mkdir -p /tmp/mds")
   os.chdir("../rouge")
+
+  TMP = "../../material-data/tmp"
+  os.system("mkdir -p %s/mds" % TMP)
 
   # load models for embeddings
   wordfile = "../SIF/data/glove.840B.300d-freq500K.txt"

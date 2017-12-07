@@ -20,12 +20,12 @@ def runformds(datapoint_folder):
   best_source = None
   for source in os.listdir(srf):
     if source.endswith(".rge"): 
-      score = parse_rouge(os.path.join(srf, source), options.ver)
+      score = parse_rouge(os.path.join(srf, source), 1)
       if score > max_rouge:
         max_rouge = score
         best_source = ".".join(source.split(".")[:-1])
   if not best_source: return []
-  best = set(utils.fileaslist(os.path.join(srf, "%s.best%d" % (best_source,ver))))
+  best = set(utils.fileaslist(os.path.join(srf, "%s.best%d" % (best_source, ver))))
   return labeled(srf, orig_best = best, orig_docset_id = docset_id)
 
 def runforsds(datapoint_folder):
@@ -49,7 +49,7 @@ def labeled(srf, orig_best = None, orig_docset_id = None):
       sentences = utils.fileaslist(os.path.join(srf, source))
       embeddings = [[float(y) for y in x.split(" ")] for x in utils.fileaslist(embedding)]
       if parse_rouge(os.path.join(srf, base+".rge"), 2) < min_rge: continue
-      best = orig_best if orig_best else set(utils.fileaslist(os.path.join(srf, "%s.best%d" % (base,ver))))
+      best = orig_best if orig_best else set(utils.fileaslist(os.path.join(srf, "%s.best%d" % (base, ver))))
       docset_id = orig_docset_id if orig_docset_id else doc_id
       if docset_id != last_docset_id:
         if len(curr) > 0: output.append(curr)
@@ -81,8 +81,8 @@ if __name__ == "__main__":
  
   dataset_folder = sys.argv[1]
   output_file = sys.argv[2]
-  ver = int(sys.argv[3]) # rouge 1 or 2
-  min_rge = float(sys.argv[4]) # minimum rouge score
+  ver = int(sys.argv[3]) # 1 for best1 and 2 for best2
+  min_rge = float(sys.argv[4]) # minimum rouge2 score
   typ = sys.argv[5] # mds or sds
 
   options.dataset_folder = dataset_folder

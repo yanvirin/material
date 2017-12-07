@@ -22,7 +22,7 @@ if d:
       if n > MIN_WORDS:
         content.append(line)
         count += n
-      if n > MAX_WORDS: break
+      if count > MAX_WORDS: break
 
   with open(content_file, "w") as w:
     w.write("\n".join(content))

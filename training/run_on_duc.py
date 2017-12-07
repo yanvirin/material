@@ -10,7 +10,6 @@ def makedps(path):
     if "targets" in d and os.path.isdir(targets_path):
       words = int(d.split(".")[1])
       dps_path = targets_path + ".labeled.json"
-      #print "running on %s as inputs, %s as targets" % (inputs_path, targets_path)
       os.system("python make_datapoints.py %s %s %s %d" % (inputs_path, targets_path, dps_path, words))
 
 def run(path):
