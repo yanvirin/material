@@ -1,4 +1,24 @@
 import json
+import math
+
+def cosine_similarity(v1,v2):
+    "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
+    sumxx, sumxy, sumyy = 0, 0, 0
+    for i in range(len(v1)):
+        x = v1[i]; y = v2[i]
+        sumxx += x*x
+        sumyy += y*y
+        sumxy += x*y
+    score = sumxy/math.sqrt(sumxx*sumyy)
+    return score
+
+def average(vs):
+  v = vs[0]
+  for i in range(1, len(vs)):
+    for j in range(len(v)):
+      v[j] += vs[i][j]
+  for j in range(len(v)): v[j] = v[j] / len(vs)
+  return v
 
 def fileaslist(f):
   with open(f) as fh: return map(lambda x: x.decode("utf-8").strip(), fh.readlines())

@@ -16,7 +16,7 @@ def get_embeddings(json_input_file):
   em.create_embeddings(json_input_file, "%s/mds/%d.norm" % (TMP, code), "%s/mds/%d.emb" % (TMP, code), models)
   return [[float(n) for n in l.split(" ")] for l in utils.fileaslist("%s/mds/%d.emb" % (TMP, code))]
 
-def compute_rouge(sent_list, refs, ver = 1):
+def compute_rouge(sent_list, refs):
   sentext = "\n".join(sent_list)
   code = abs(hash(sentext))
   name0 = "%s/mds/%d.txt" % (TMP, code)
@@ -30,7 +30,8 @@ def compute_rouge(sent_list, refs, ver = 1):
   utils.write2file(cfgline, cfgfile)
   rouge_out = "%s/mds/%d.rge" % (TMP, code)
   rge.rouge(1000, cfgfile, rouge_out)
-  return rge.parse_rouge(rouge_out, ver)
+  score = rge.parse_rouge(rouge_out, 2) + 0.0001*rge.parse_rouge(rouge_out, 1)
+  return score
 
 # needs input_folder and targets_folder defined in the context
 def runoninput(f):
