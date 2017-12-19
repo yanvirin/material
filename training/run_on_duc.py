@@ -1,6 +1,16 @@
 import sys, os
+import argparse
 
-duc_dir = sys.argv[1]
+'''
+This script runs the make_datapoints.py script on all the duc data input folders
+to create labeled json files.
+'''
+
+parser = argparse.ArgumentParser(description = 'Create labeled datapoints for all the duc data')
+parser.add_argument('duc', metavar="duc", help='the duc data folder')
+args = parser.parse_args()
+
+duc_dir = args.duc
 
 def makedps(path):
   inputs_path = path

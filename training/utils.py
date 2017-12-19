@@ -1,6 +1,10 @@
 import json
 import math
 
+'''
+This file holds all kind of utils that are used throught the code base.
+'''
+
 def cosine_similarity(v1,v2):
     "compute cosine similarity of v1 to v2: (v1 dot v2)/{||v1||*||v2||)"
     sumxx, sumxy, sumyy = 0, 0, 0
@@ -12,6 +16,9 @@ def cosine_similarity(v1,v2):
     score = sumxy/math.sqrt(sumxx*sumyy)
     return score
 
+'''
+Returns an average for the list of vectors (represented as lists of floats)
+'''
 def average(vs):
   v = vs[0]
   for i in range(1, len(vs)):
@@ -26,11 +33,17 @@ def fileaslist(f):
 def write2file(text, f):
   with open(f, "w") as fw: fw.write(text.encode('utf-8'))
 
+'''
+Sorts the json datapoint results
+'''
 def sort_results(results):
   for r in results:
     r.sort(cmp=lambda x,y: cmp(x["docset_id"],y["docset_id"])*100+cmp(x["doc_id"],y["doc_id"])*10+cmp(int(x["sentence_id"]),int(y["sentence_id"])))
   results.sort(cmp=lambda x,y: cmp(x[0]["docset_id"],y[0]["docset_id"]))
 
+'''
+Saves the json datapoint results
+'''
 def save_results(results, output_file):
   sort_results(results)
 

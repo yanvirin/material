@@ -2,10 +2,22 @@ import sys, os
 from collections import Counter
 from collections import defaultdict
 from extract_best_sentences import parse_rouge
+import argparse
 
+'''
+This script calculates the distribution of all the ROUGE1 and ROUGE2 scores
+accross the dataset
+'''
+
+parser = argparse.ArgumentParser(description = 'Calculate the distributions of ROUGE 1 and 2 scores')
+parser.add_argument('dataset', metavar="ds", help='the path to the dataset')
+args = parser.parse_args()
+
+dir = args.dataset
 
 dist1 = Counter()
 dist2 = Counter()
+
 def record(rge, dist):
   v = int(rge * 20) / 20.0
   dist[v] += 1
@@ -14,8 +26,6 @@ def printout(dist):
   print "distribution:"
   for k in sorted(dist.keys()):
     print "%f %d" % (k, dist[k])
-
-dir = sys.argv[1]
 
 for d in os.listdir(dir):
   if os.path.isdir(os.path.join(dir, d)):

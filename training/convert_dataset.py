@@ -3,17 +3,19 @@ from multiprocessing.dummy import Pool as threads
 import utils
 sys.path.append("../rouge-scripts")
 from rouge import parse_rouge
+import argparse
+
+'''
+This script converts a dataset to a labeled dataset
+in the json format.
+'''
 
 MDS_TYPE = "mds"
 SDS_TYPE = "sds"
 
-class Options(object):
-  pass
-
 def runformds(datapoint_folder):
-  dsf = options.dataset_folder
+  dsf = dataset_folder
   dpf = datapoint_folder
-  ver = options.ver
   srf = os.path.join(dsf, dpf, "sources")
   docset_id = datapoint_folder
   max_rouge = -1.0
@@ -29,14 +31,10 @@ def runformds(datapoint_folder):
   return labeled(srf, orig_best = best, orig_docset_id = docset_id)
 
 def runforsds(datapoint_folder):
-  dsf = options.dataset_folder
-  dpf = datapoint_folder
-  srf = os.path.join(dsf, dpf, "sources")
+  srf = os.path.join(dataset_folder, datapoint_folder, "sources")
   return labeled(srf)
 
 def labeled(srf, orig_best = None, orig_docset_id = None):
-  ver = options.ver
-  min_rge = options.min_rge
   output = []
   n = 0
   curr = []
@@ -69,7 +67,7 @@ def labeled(srf, orig_best = None, orig_docset_id = None):
   return output
 
 def runoninput(datapoint_folder):
-  mds = options.typ == MDS_TYPE
+  mds = typ == MDS_TYPE
   if mds:
     return runformds(datapoint_folder)
   else:
@@ -77,18 +75,19 @@ def runoninput(datapoint_folder):
 
 if __name__ == "__main__":
 
-  options = Options()
- 
-  dataset_folder = sys.argv[1]
-  output_file = sys.argv[2]
-  ver = int(sys.argv[3]) # 1 for best1 and 2 for best2
-  min_rge = float(sys.argv[4]) # minimum rouge2 score
-  typ = sys.argv[5] # mds or sds
-
-  options.dataset_folder = dataset_folder
-  options.ver = ver
-  options.typ = typ
-  options.min_rge = min_rge
+  parser = argparse.ArgumentParser(description = 'Convert a dataset to a labeled dataset for training or evaluation')
+  parser.add_argument('dataset', metavar="ds", help='the path to the dataset top level folder')
+  parser.add_argument('outfile', metavar="out", help='the output file with the labedled data points as a json file')
+  parser.add_argument('ver', metavar="ver", type=int, help='whether to use .best1 or .best2 to create the datapoints')
+  parser.add_argument('min_rge', metavar="mrge", type=float, help='the minimal ROUGE2 in the .rge file to consider as valid')
+  parser.add_argument('typ', help='to create mds or sds datapoints (mds, sds)')
+  args = parser.parse_args()
+  
+  dataset_folder = args.dataset
+  output_file = args.outfile
+  ver = args.ver
+  min_rge = args.min_rge
+  typ = args.typ
  
   THREADS = 20
 

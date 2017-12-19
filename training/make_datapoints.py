@@ -4,10 +4,19 @@ import make_embeddings as em
 import rouge as rge
 from multiprocessing.dummy import Pool as threads
 import utils
+import argparse
 
 '''
 This module is responsible to take a duc data input dir and target dir, and
 produce a file of datapoints with labels, created greedily using rouge metric with the target
+
+This scripts need theano to be installed on the system.
+
+This script needs to load embeddings and run ROUGE. This combination is a lethal one from
+the performance point of view, and so it takes a lot of time to complete.
+We want to hold the embeddings models once in RAM,
+but want to run ROUGE in parallel. In the future, we need to use more advanced multi processing
+libraries in order to share the model as a copy on write memory.
 '''
 
 # assumes existance of models variable in the context
@@ -71,10 +80,16 @@ if __name__ == "__main__":
   
   THREADS = 50
 
-  input_folder = sys.argv[1]
-  targets_folder = sys.argv[2]
-  output_file = sys.argv[3]
-  numwords = int(sys.argv[4])
+  parser = argparse.ArgumentParser(description = 'Create labeled datapoints from the one ducs data folder')
+  parser.add_argument('input', metavar="in", help='the path to one input duc data folder')
+  parser.add_argument('target', metavar="targ", help='the path to the target corresponding one data folder')
+  parser.add_argument('out', metavar="out", help='the path to the output file in json format')
+  args = parser.parse_args()
+
+  input_folder = args.input
+  targets_folder = args.target
+  output_file = args.out
+  numwords = 100
 
   os.chdir("../rouge")
 

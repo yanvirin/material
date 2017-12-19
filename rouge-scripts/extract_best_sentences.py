@@ -3,11 +3,19 @@ from os import listdir
 from os import path
 from rouge import rouge
 from rouge import parse_rouge
+import argparse
 
 '''
-The version of choosing the best greedily and independently
-of the previous choises, meaning each sentence is evaluated with rouge
-against the summary reference independenly of any other sentences.
+Extracts the best sentences according to either IGR (Independent Greedy Rouge) or
+ SGR (Sequential Greedy Rouge) and write them to the .best1 or .best2 files respectfully
+
+This script should be run with "parallel" on all the articles in the dataset, e.g:
+
+ls dataset | parallel -j 10 'python extract_best_sentences.py dataset 1 {} 1' 
+'''
+
+'''
+Independent Greedy Rouge implementation
 '''
 def choosebest_ind(sentences):
   scores = []
@@ -24,6 +32,9 @@ def choosebest_ind(sentences):
     if count > MAX_WORDS: break
   return best
 
+'''
+Sequential Greedy Rouge implementation
+'''
 def choosebest_seq(sentences):
   best = []
   count = 0
@@ -46,6 +57,14 @@ def choosebest_seq(sentences):
 
 if __name__ == "__main__":
 
+  parser = argparse.ArgumentParser(description = 'Extract the best sentences according to IGR ro SGR')
+  parser.add_argument('dataset', metavar="ds", help='the path to the dataset')
+  parser.add_argument('ver', metavar="ver", type=int, help='the ROUGE 1 or 2 to use (1,2)')
+  parser.add_argument('d', metavar="d", help='the article id to run on')
+  parser.add_argument('bver', metavar="bver", type=int, help='(1 for IGR, 2 for SGR)')  
+
+  args = parser.parse_args()
+
   MAX_WORDS=100
   MIN_WORDS=3
 
@@ -53,10 +72,10 @@ if __name__ == "__main__":
 
   os.system("mkdir -p %s" % tmpdir)  
 
-  dataset = sys.argv[1]
-  ver = int(sys.argv[2]) # rouge 1 or 2
-  d = sys.argv[3]
-  bestver = sys.argv[4] # choosing best with "ind" or "seq"
+  dataset = args.dataset
+  ver = args.ver
+  d = args.d
+  bestver = str(args.bver)
  
   content_file = "%s/rouge-model%s.txt" % (tmpdir, d)
   config_file = "%s/rouge-config%s.txt" % (tmpdir, d)
