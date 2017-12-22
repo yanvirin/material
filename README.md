@@ -1,5 +1,13 @@
 # A summarization project, Columbia University
 
+## Getting data from Wikinews
+
+The command to run inside the **pywikibot** subfolder:
+
+python pwb.py listpages -cat:Published -get
+
+This gets all the wikinews articles which were published in the English lanaguage.
+
 ## How to compute baselines?
 
 In the **training** folder you will find the baseline.py script.

@@ -5,6 +5,7 @@ import rouge as rge
 import utils
 import random
 import math
+from collections import defaultdict
 
 '''
 This script runs the baseline evaluation on the dataset
@@ -13,6 +14,32 @@ The output is a ROUGE script output which includes ROUGE1 and ROUGE2 numbers
 '''
 
 FIRST_N_LINES = 3
+
+def kl(source_path):
+  def dist(text):
+    words = text.split(" ")
+    d = defaultdict(int)
+    for w in words: d[w] += 1.0 / len(words)
+    return d
+
+  sentences = utils.fileaslist(source_path)
+  D_dist = dist(" ".join(sentences))
+  best = []
+  for j in range(FIRST_N_LINES):
+    min_dist = 100000
+    best_sen = None
+    for s in sentences:
+      if s in best: pass
+      candidate = best + [s]
+      S_dist = dist(" ".join(candidate))
+      distance = 0.0
+      for w in s.split(" "): distance += -S_dist[w] * math.log(D_dist[w]/(S_dist[w]+0.00000000001), 2.0)
+      if distance < min_dist:
+        min_dist = distance
+        best_sen = s
+    if best_sen: 
+      best.append(best_sen)
+  return "\n".join(best)
 
 def centroidemd(source_path):
   get_embds = lambda path: [[float(y) for y in x.split(" ")] for x in utils.fileaslist(path[:-3]+"emd")]
@@ -66,7 +93,7 @@ if __name__ == "__main__":
 
   cache = dict()
 
-  candidate = centroidemd if typ == "centroid" else (first3 if typ == "first3" else rand3)
+  candidate = centroidemd if typ == "centroid" else (first3 if typ == "first3" else kl if typ == "kl" else rand3)
 
   print "using %s for candidates" % candidate
 
