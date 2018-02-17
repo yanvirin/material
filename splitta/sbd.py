@@ -1,3 +1,4 @@
+from __future__ import print_function
 import re, sys, os, math, tempfile, collections
 import sbd_util, word_tokenize
 
@@ -110,7 +111,7 @@ def get_data(files, expect_labels=True, tokenize=False, verbose=False, files_alr
         if files_already_opened:
             fh = file
         else:
-            fh = open(file)
+            fh = open(file, 'r')
 
         for line in fh:
 
@@ -527,12 +528,12 @@ class Doc:
                 if frag.next: w2 = ' '.join(frag.next.tokenized.split()[:2])
                 else: w2 = '<EOF>'
                 if verbose:
-                    print '[%d] [%1.4f] %s?? %s' %(frag.label, frag.pred, w1, w2)
+                    print('[%d] [%1.4f] %s?? %s' %(frag.label, frag.pred, w1, w2))
 
             frag = frag.next
 
         error = 1 - (1.0 * correct / total)
-        print 'correct [%d] total [%d] error [%1.4f]' %(correct, total, error)
+        print ('correct [%d] total [%d] error [%1.4f]' %(correct, total, error))
         
 class Frag:
     """

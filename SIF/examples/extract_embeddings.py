@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 sys.path.append('../src')
 import data_io, params, SIF_embedding
@@ -48,4 +49,4 @@ if __name__ == "__main__":
       output_file = "%s/%s" % (output_dir, f)
       print_embeddings(get_embeddings(words, We, word2weight, weight4ind, input_file, params), output_file)
     except Exception as ex:
-      print "an error occured. skipped %s, due to err: %s" % (input_file, ex)
+      print("an error occured. skipped %s, due to err: %s" % (input_file, ex))

@@ -28,10 +28,10 @@ def average(vs):
   return v
 
 def fileaslist(f):
-  with open(f) as fh: return map(lambda x: x.decode("utf-8").strip(), fh.readlines())
+  with open(f, 'r') as fh: return [line.strip() for line in fh.readlines()]
 
 def write2file(text, f):
-  with open(f, "w") as fw: fw.write(text.encode('utf-8'))
+  with open(f, "w") as fw: fw.write(text)
 
 '''
 Sorts the json datapoint results

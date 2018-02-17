@@ -282,13 +282,13 @@ def getWordWeight(weightfile, a=1e-3):
                 N += float(i[1])
             else:
                 print(i)
-    for key, value in word2weight.iteritems():
+    for key, value in word2weight.items():
         word2weight[key] = a / (a + value/N)
     return word2weight
 
 def getWeight(words, word2weight):
     weight4ind = {}
-    for word, ind in words.iteritems():
+    for word, ind in words.items():
         if word in word2weight:
             weight4ind[ind] = word2weight[word]
         else:
@@ -297,8 +297,8 @@ def getWeight(words, word2weight):
 
 def seq2weight(seq, mask, weight4ind):
     weight = np.zeros(seq.shape).astype('float32')
-    for i in xrange(seq.shape[0]):
-        for j in xrange(seq.shape[1]):
+    for i in range(seq.shape[0]):
+        for j in range(seq.shape[1]):
             if mask[i,j] > 0 and seq[i,j] >= 0:
                 weight[i,j] = weight4ind[seq[i,j]]
     weight = np.asarray(weight, dtype='float32')
@@ -356,17 +356,17 @@ def getIDFWeight(wordfile, save_file=''):
         g1x,g1mask,g2x,g2mask = getDataFromFile(prefix+f, words)
         dlen += g1x.shape[0]
         dlen += g2x.shape[0]
-        for i in xrange(g1x.shape[0]):
-            for j in xrange(g1x.shape[1]):
+        for i in range(g1x.shape[0]):
+            for j in range(g1x.shape[1]):
                 if g1mask[i,j] > 0:
                     df[g1x[i,j]] += 1
-        for i in xrange(g2x.shape[0]):
-            for j in xrange(g2x.shape[1]):
+        for i in range(g2x.shape[0]):
+            for j in range(g2x.shape[1]):
                 if g2mask[i,j] > 0:
                     df[g2x[i,j]] += 1
 
     weight4ind = {}
-    for i in xrange(len(df)):
+    for i in range(len(df)):
         weight4ind[i] = np.log2((dlen+2.0)/(1.0+df[i]))
     if save_file:
         pickle.dump(weight4ind, open(save_file, 'w'))
