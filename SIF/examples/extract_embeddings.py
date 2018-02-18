@@ -16,7 +16,7 @@ def get_embeddings(words, We, word2weight, weight4ind, filename, params):
 
 def print_embeddings(embedding, output_file):
   # print out the embeddings
-  writer = open(output_file, "w")
+  writer = open(output_file, "w",encoding="utf-8")
   for i in range(0, len(embedding)):
     items = []
     for j in range(0, len(embedding[i, :])):

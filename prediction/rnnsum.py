@@ -29,7 +29,7 @@ class Summarizer(object):
     '''
     def split2sens(self, raw_text_path):
       out_file_name = tempfile.NamedTemporaryFile().name
-      with open(out_file_name, "w") as out_f:
+      with open(out_file_name, "w", encoding="utf-8") as out_f:
         test = sbd.get_data(raw_text_path, tokenize=True)
         test.featurize(self.splitta_model, verbose=False)
         self.splitta_model.classify(test, verbose=False)
@@ -126,7 +126,7 @@ def main():
         print(summary)
         print("===========")
         output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
-        with open(output_path, "w") as fp: fp.write(summary)
+        with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
 
 if __name__ == "__main__":
     main()

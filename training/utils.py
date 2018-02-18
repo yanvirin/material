@@ -31,7 +31,7 @@ def fileaslist(f):
   with open(f, "r", encoding="utf-8") as fh: return [line.strip() for line in fh.readlines()]
 
 def write2file(text, f):
-  with open(f, "w") as fw: fw.write(text)
+  with open(f, "w", encoding="utf-8") as fw: fw.write(text)
 
 '''
 Sorts the json datapoint results
