@@ -28,7 +28,7 @@ def average(vs):
   return v
 
 def fileaslist(f):
-  with open(f, 'r') as fh: return [line.strip() for line in fh.readlines()]
+  with open(f, "r", encoding="utf-8") as fh: return [line.strip() for line in fh.readlines()]
 
 def write2file(text, f):
   with open(f, "w") as fw: fw.write(text)
