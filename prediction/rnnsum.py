@@ -41,7 +41,11 @@ class Summarizer(object):
       write2file("\n".join([wt.normalize(line) for line in fileaslist(sens_path)]), out_file_name)
       return out_file_name
    
-    def get_embds(self, norm_text_path, query):
+    def get_embds(self, norm_text_path, query_path):
+
+      # extract the query from the query_path
+      query = fileaslist(query_path)[0]
+      
       # deal with the text
       out_f = tempfile.NamedTemporaryFile()
       em.print_embeddings(em.get_embeddings(self.em[0],self.em[1],self.em[2],self.em[3],norm_text_path,self.em[4]), out_f.name) 
@@ -55,10 +59,10 @@ class Summarizer(object):
       qry_embds = torch.FloatTensor([[float(x) for x in fileaslist(qout_f.name)[0].split(" ")]]).repeat(len(sen_embds),1)
       return torch.cat([sen_embds, qry_embds], 1)
 
-    def ingest_text(self, raw_text_path, query):
+    def ingest_text(self, raw_text_path, query_path):
         sens_text_path = self.split2sens(raw_text_path)
         norm_text_path = self.normalize(sens_text_path)
-        sentence_embeddings = self.get_embds(norm_text_path, query)
+        sentence_embeddings = self.get_embds(norm_text_path, query_path)
 
         assert(len(fileaslist(sens_text_path)) == len(fileaslist(norm_text_path)))
 
