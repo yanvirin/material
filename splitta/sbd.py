@@ -111,7 +111,7 @@ def get_data(files, expect_labels=True, tokenize=False, verbose=False, files_alr
         if files_already_opened:
             fh = file
         else:
-            fh = open(file, 'r')
+            fh = open(file, 'r', encoding="utf-8")
 
         for line in fh:
 
