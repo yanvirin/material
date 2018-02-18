@@ -122,9 +122,6 @@ def main():
     # go over all the input files and run summarization
     for input_path in args.files:
         summary = summarizer.summarize_text(input_path, query=args.query, max_length=args.length)
-        print(input_path)
-        print(summary)
-        print("===========")
         output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
         with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
 
