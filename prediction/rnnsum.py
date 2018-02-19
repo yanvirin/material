@@ -106,7 +106,6 @@ def main():
     if not os.path.exists(args.summary_dir):
         os.makedirs(args.summary_dir)
 
-    print("Loading model from {} ...".format(args.model_path))
     torch_model = torch.load(args.model_path, map_location=lambda storage, loc: storage)
     
     # initialize the sif embeddings stuff
@@ -127,6 +126,8 @@ def main():
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.bind(("", args.port))
     serversocket.listen(5)
+
+    print("Loaded all models successfully, ready to accept requests on %d." % args.port)
 
     while 1:
       (clientsocket, address) = serversocket.accept()
