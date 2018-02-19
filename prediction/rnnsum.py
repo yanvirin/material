@@ -138,6 +138,7 @@ def main():
           summary = summarizer.summarize_text(input_path, query=args.query, max_length=args.length)
           output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
           with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
+          os.chmod(output_path, 0o777)
 
 if __name__ == "__main__":
     main()
