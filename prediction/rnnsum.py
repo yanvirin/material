@@ -140,6 +140,7 @@ def main():
           output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
           with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
           os.chmod(output_path, 0o777)
+        clientsocket.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
 
 if __name__ == "__main__":
     main()
