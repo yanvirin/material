@@ -1,4 +1,4 @@
-import os,sys,argparse,time,tempfile
+import os,sys,argparse,time,tempfile,socket
 import torch
 from torch.autograd import Variable
 from collections import namedtuple
@@ -10,6 +10,8 @@ import extract_embeddings as em
 import sbd
 from utils import fileaslist, write2file
 import word_tokenize as wt
+
+SUMMARIZATION_TRIGGER = "7XXASDHHCESADDFSGHHSD"
 
 class Summarizer(object):
 
@@ -88,7 +90,7 @@ def main():
         "--model-path", default=os.getenv("RNNSUM_PATH"),
         type=str, required=False)
     parser.add_argument(
-        "--files", type=str, nargs="+", required=True)
+        "--folder", type=str, required=True)
     parser.add_argument(
         "--length", default=100, type=int)
     parser.add_argument(
@@ -97,12 +99,13 @@ def main():
         "--embd-wordfile-path", required=True, type=str)
     parser.add_argument(
         "--embd-weightfile-path", required=True, type=str)
+    parser.add_argument(
+        "--port", required=True, type=int)
     args = parser.parse_args()
 
     if not os.path.exists(args.summary_dir):
         os.makedirs(args.summary_dir)
 
-    print("Loading model from {} ...".format(args.model_path))
     torch_model = torch.load(args.model_path, map_location=lambda storage, loc: storage)
     
     # initialize the sif embeddings stuff
@@ -119,11 +122,25 @@ def main():
     # create the summarizer
     summarizer = Summarizer(sif_model, torch_model, splitta_model)
 
-    # go over all the input files and run summarization
-    for input_path in args.files:
-        summary = summarizer.summarize_text(input_path, query=args.query, max_length=args.length)
-        output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
-        with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
+    # start the server and listen to summarization requests
+    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serversocket.bind(("", args.port))
+    serversocket.listen(5)
+
+    print("Loaded all models successfully, ready to accept requests on %d." % args.port)
+
+    while 1:
+      (clientsocket, address) = serversocket.accept()
+      data = clientsocket.recv(1000000)
+      if str(data, "utf-8") == SUMMARIZATION_TRIGGER:
+        # go over all the input files and run summarization
+        for input_path in os.listdir(args.folder):
+          input_path = args.folder + "/" + input_path
+          summary = summarizer.summarize_text(input_path, query=args.query, max_length=args.length)
+          output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
+          with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
+          os.chmod(output_path, 0o777)
+        clientsocket.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
 
 if __name__ == "__main__":
     main()
