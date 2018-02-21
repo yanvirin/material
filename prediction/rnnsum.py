@@ -127,7 +127,7 @@ def main():
     serversocket.bind(("", args.port))
     serversocket.listen(5)
 
-    print("Loaded all models successfully, ready to accept requests on %d." % args.port)
+    print("Loaded all models successfully, ver:02/20/18_19:08PST, ready to accept requests on %d." % args.port)
 
     while 1:
       (clientsocket, address) = serversocket.accept()

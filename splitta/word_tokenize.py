@@ -72,4 +72,5 @@ def normalize(s):
     """
     Simple normalize the output of the tokenized text
     """
-    return _normalize_regexp.sub(" ", s).strip().lower()
+    res = _normalize_regexp.sub(" ", s).strip().lower()
+    return " " if res == "" else res
