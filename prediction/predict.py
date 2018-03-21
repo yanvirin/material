@@ -10,6 +10,7 @@ sys.path.append("../training")
 from utils import write2file
 
 def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds):
+  print("DEBUG: sen_embds len: %d, qry_embds len %d, sen_embds[0] len: %d" % (len(sen_embds),len(qry_embds),len(sen_embds[0])))
   sen_embds = torch.FloatTensor(sen_embds)
   qry_embds = torch.FloatTensor([qry_embds]).repeat(len(sen_embds),1)
   embeddings = torch.cat([sen_embds, qry_embds], 1) 
