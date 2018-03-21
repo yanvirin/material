@@ -10,6 +10,7 @@ import extract_embeddings as em
 import sbd
 from utils import fileaslist, write2file
 import word_tokenize as wt
+from predict import get_inputs_metadata
 
 SUMMARIZATION_TRIGGER = "7XXASDHHCESADDFSGHHSD"
 
@@ -51,34 +52,26 @@ class Summarizer(object):
       # deal with the text
       out_f = tempfile.NamedTemporaryFile()
       em.print_embeddings(em.get_embeddings(self.em[0],self.em[1],self.em[2],self.em[3],norm_text_path,self.em[4]), out_f.name) 
-      sen_embds = torch.FloatTensor([[float(x) for x in line.split(" ")] for line in fileaslist(out_f.name)])
-      
+      sen_embds = [[float(x) for x in line.split(" ")] for line in fileaslist(out_f.name)]     
+ 
       # deal with query
       qin_f = tempfile.NamedTemporaryFile()
       write2file(wt.normalize(query), qin_f.name)
       qout_f = tempfile.NamedTemporaryFile()
       em.print_embeddings(em.get_embeddings(self.em[0],self.em[1],self.em[2],self.em[3],qin_f.name,self.em[4]), qout_f.name)
-      qry_embds = torch.FloatTensor([[float(x) for x in fileaslist(qout_f.name)[0].split(" ")]]).repeat(len(sen_embds),1)
-      return torch.cat([sen_embds, qry_embds], 1)
+      qry_embds = [float(x) for x in fileaslist(qout_f.name)[0].split(" ")]
+      return sen_embds,qry_embds
 
     def ingest_text(self, raw_text_path, query_path):
         sens_text_path = self.split2sens(raw_text_path)
         norm_text_path = self.normalize(sens_text_path)
-        sentence_embeddings = self.get_embds(norm_text_path, query_path)
+        sen_embds,qry_embds = self.get_embds(norm_text_path, query_path)
 
         assert(len(fileaslist(sens_text_path)) == len(fileaslist(norm_text_path)))
 
         clean_texts = fileaslist(sens_text_path)
         sent_tokens = [sen.split(" ") for sen in fileaslist(norm_text_path)]
-        word_counts = torch.LongTensor([[len(tokens) for tokens in sent_tokens]])
-        input_length = torch.LongTensor([len(sent_tokens)])
-        inputs = namedtuple("Inputs", ["length", "embedding", "word_count"])(
-            Variable(input_length), 
-            Variable(sentence_embeddings.unsqueeze(0)),
-            Variable(word_counts.unsqueeze(2)))
-        metadata = namedtuple("Metadata", ["text"])([clean_texts])
-
-        return inputs, metadata 
+        return get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds)
 
 def main():
     parser = argparse.ArgumentParser()
