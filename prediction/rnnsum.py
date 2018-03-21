@@ -23,7 +23,7 @@ class Summarizer(object):
 
     def summarize_text(self, raw_text_path, query, max_length=100):
       inputs, metadata = self.ingest_text(raw_text_path, query)
-      summary = self.predictor.extract(inputs, metadata, word_limit=max_length)[0]
+      summary = self.predictor.extract(inputs, metadata, word_limit=max_length, rescore=True)[0]
       return summary
 
     '''
