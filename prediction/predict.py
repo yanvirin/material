@@ -9,8 +9,20 @@ from collections import namedtuple
 sys.path.append("../training")
 from utils import write2file
 
-def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds):
-  print("DEBUG: sen_embds len: %d, qry_embds len %d, sen_embds[0] len: %d" % (len(sen_embds),len(qry_embds),len(sen_embds[0])))
+def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, minTokens = 3):
+  # filter out very short sentences
+  short = []
+  for i,tokens in enumerate(sent_tokens): 
+    if len(tokens) < minTokens: short.append(i)
+  for i in short:
+    del sent_tokens[i]
+    del clean_texts[i]
+    del sen_embds[i]
+    del qry_embds[i]
+  assert(len(sent_tokens) == len(clean_texts))
+  assert(len(clean_texts) == len(sen_embds))
+  assert(len(sen_embds) == len(qry_embds))
+ 
   sen_embds = torch.FloatTensor(sen_embds)
   qry_embds = torch.FloatTensor([qry_embds]).repeat(len(sen_embds),1)
   embeddings = torch.cat([sen_embds, qry_embds], 1) 
