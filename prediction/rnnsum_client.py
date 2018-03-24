@@ -6,13 +6,16 @@ is listening to
 '''
 SUMMARIZATION_TRIGGER = "7XXASDHHCESADDFSGHHSD"
 
-port = int(sys.argv[1])
+def run(port):
+  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  s.connect(("0.0.0.0", port))
+  s.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
+  data = None
+  while(data != SUMMARIZATION_TRIGGER):
+   data = s.recv(1000000)
+   data = str(data, "utf-8")
+  print("Summarization results are ready!")
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(("0.0.0.0", port))
-s.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
-data = None
-while(data != SUMMARIZATION_TRIGGER):
- data = s.recv(1000000)
- data = str(data, "utf-8")
-print("Summarization results are ready!")
+if __name__ == "__main__":
+  port = int(sys.argv[1])
+  run(port)
