@@ -51,6 +51,7 @@ if __name__ == "__main__":
     dp = json.loads(line)
     id = dp["id"]
     query = dp["query"]
+    print("dp,id: %s,%s" % (id,query))
     qry_embds = dp["qembedding"]
     sentences = []
     tokens = []
@@ -61,5 +62,5 @@ if __name__ == "__main__":
       sentences.append("%s %s" % (str(sen_id), input["text"]))
       tokens.append(input["text"].split(" "))
     inputs, metadata = get_inputs_metadata(tokens, sentences, sen_embds, qry_embds)
-    summary = predictor.extract(inputs, metadata, word_limit=100, rescore=rescore)[0]
-    write2file("query: " + query + "\n" + summary + "\n", "%s/%s.pred" % (out_path, id))
+    summaries, scores = predictor.extract(inputs, metadata, word_limit=100, rescore=rescore)
+    write2file("%s" % summaries[0] + "\n", "%s/%s.pred" % (out_path, id))

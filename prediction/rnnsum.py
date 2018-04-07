@@ -21,9 +21,10 @@ class Summarizer(object):
       self.predictor = predictor
       self.splitta_model = splitta_model
 
-    def summarize_text(self, raw_text_path, query, max_length=100):
+    def summarize_text(self, raw_text_path, query, max_length=100,rescore=False):
+      assert rescore==True or rescore==False
       inputs, metadata = self.ingest_text(raw_text_path, query)
-      summary = self.predictor.extract(inputs, metadata, word_limit=max_length, rescore=True)[0]
+      summary = self.predictor.extract(inputs, metadata, word_limit=max_length, rescore=rescore)[0]
       return summary
 
     '''
@@ -94,6 +95,8 @@ def main():
         "--embd-weightfile-path", required=True, type=str)
     parser.add_argument(
         "--port", required=True, type=int)
+    parser.add_argument(
+        "--rescore", required=True, type=bool)
     args = parser.parse_args()
 
     if not os.path.exists(args.summary_dir):
@@ -129,7 +132,8 @@ def main():
         # go over all the input files and run summarization
         for input_path in os.listdir(args.folder):
           input_path = args.folder + "/" + input_path
-          summary = summarizer.summarize_text(input_path, query=args.query, max_length=args.length)
+          summary = summarizer.summarize_text(
+                      input_path, query=args.query, max_length=args.length, rescore=args.rescore)
           output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
           with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
           os.chmod(output_path, 0o777)
