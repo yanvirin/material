@@ -24,8 +24,8 @@ class Summarizer(object):
     def summarize_text(self, raw_text_path, query, max_length=100,rescore=False):
       assert rescore==True or rescore==False
       inputs, metadata = self.ingest_text(raw_text_path, query)
-      summary = self.predictor.extract(inputs, metadata, word_limit=max_length, rescore=rescore)[0]
-      return summary
+      summaries, scores = self.predictor.extract(inputs, metadata, word_limit=max_length, rescore=rescore)
+      return summaries[0]
 
     '''
     Uses splitta based sentences splitter to 
@@ -96,8 +96,10 @@ def main():
     parser.add_argument(
         "--port", required=True, type=int)
     parser.add_argument(
-        "--rescore", required=True, type=bool)
+        "--rescore", required=True, type=str)
     args = parser.parse_args()
+    
+    args.rescore=args.rescore=="True"
 
     if not os.path.exists(args.summary_dir):
         os.makedirs(args.summary_dir)
@@ -123,7 +125,7 @@ def main():
     serversocket.bind(("", args.port))
     serversocket.listen(5)
 
-    print("Loaded all models successfully, ver:03/21/18_11:00PST, ready to accept requests on %d." % args.port)
+    print("Loaded all models successfully, ver:03/21/18_11:00PST, ready to accept requests on %d with rescore=%s" % (args.port, args.rescore==True))
 
     while 1:
       (clientsocket, address) = serversocket.accept()
