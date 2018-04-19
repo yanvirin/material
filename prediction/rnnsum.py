@@ -21,10 +21,11 @@ class Summarizer(object):
       self.predictor = predictor
       self.splitta_model = splitta_model
 
-    def summarize_text(self, raw_text_path, query, max_length=100,rescore=False):
+    def summarize_text(self, raw_text_path, query, portion=None, max_length=100,rescore=False):
       assert rescore==True or rescore==False
       inputs, metadata = self.ingest_text(raw_text_path, query)
-      summaries, scores = self.predictor.extract(inputs, metadata, word_limit=max_length, rescore=rescore)
+      word_limit = max_length if portion is None else int(inputs.word_count.data.sum(1)*portion/100.0)
+      summaries, scores = self.predictor.extract(inputs, metadata, word_limit=word_limit, rescore=rescore)
       return summaries[0]
 
     '''
@@ -97,6 +98,8 @@ def main():
         "--port", required=True, type=int)
     parser.add_argument(
         "--rescore", required=True, type=str)
+    parser.add_argument(
+        "--portion", required=False, default=None, type=int)
     args = parser.parse_args()
     
     args.rescore=args.rescore=="True"
@@ -125,7 +128,7 @@ def main():
     serversocket.bind(("", args.port))
     serversocket.listen(5)
 
-    print("Loaded all models successfully, ver:03/21/18_11:00PST, ready to accept requests on %d with rescore=%s" % (args.port, args.rescore==True))
+    print("Loaded all models successfully, ver:04/10/18_11:00PST, ready to accept requests on %d with rescore=%s" % (args.port, args.rescore==True))
 
     while 1:
       (clientsocket, address) = serversocket.accept()
@@ -135,7 +138,7 @@ def main():
         for input_path in os.listdir(args.folder):
           input_path = args.folder + "/" + input_path
           summary = summarizer.summarize_text(
-                      input_path, query=args.query, max_length=args.length, rescore=args.rescore)
+                      input_path, query=args.query, portion=args.portion, max_length=args.length, rescore=args.rescore)
           output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
           with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
           os.chmod(output_path, 0o777)
