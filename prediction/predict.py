@@ -12,7 +12,7 @@ import random
 import rouge_papier
 from spensum.scripts.baselines.train_rnn_extractor import collect_reference_paths
 
-def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, minTokens = 3):
+def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, query="", minTokens = 3):
   # filter out very short sentences
   short = []
   for i,tokens in enumerate(sent_tokens): 
@@ -24,7 +24,10 @@ def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, minToken
   assert(len(sent_tokens) == len(clean_texts))
   assert(len(clean_texts) == len(sen_embds))
  
+  if len(sen_embds) == 0: return None, None
+
   sen_embds = torch.FloatTensor(sen_embds)
+  print("DEBUG: sen embds len: %s" % len(sen_embds))
   qry_embds = torch.FloatTensor([qry_embds]).repeat(len(sen_embds),1)
   embeddings = torch.cat([sen_embds, qry_embds], 1) 
   word_counts = torch.LongTensor([[len(tokens) for tokens in sent_tokens]])
@@ -33,7 +36,7 @@ def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, minToken
     Variable(input_length),
     Variable(embeddings.unsqueeze(0)),
     Variable(word_counts.unsqueeze(2)))
-  metadata = namedtuple("Metadata", ["text"])([clean_texts])
+  metadata = namedtuple("Metadata", ["text","query"])([clean_texts],[query])
   return inputs, metadata
 
 if __name__ == "__main__":
@@ -73,10 +76,11 @@ if __name__ == "__main__":
        tokens.append(input["text"].split(" "))
      ref_paths = ids2refs[id]
      inputs, metadata = get_inputs_metadata(tokens, sentences, sen_embds, qry_embds)
-     summaries, _ = predictor.extract(inputs, metadata, strategy=strategy, word_limit=100, rescore=rescore)
-     summary_path = "%s/%s.pred" % (out_path, id)
-     write2file("%s" % summaries[0] + "\n", summary_path)
-     rouge_paths.append([summary_path, ref_paths])
+     if inputs is not None:
+       summaries, _ = predictor.extract(inputs, metadata, strategy=strategy, word_limit=100, rescore=rescore)
+       summary_path = "%s/%s.pred" % (out_path, id)
+       write2file("%s" % summaries[0] + "\n", summary_path)
+       rouge_paths.append([summary_path, ref_paths])
 
    # compute rouge
    config_text = rouge_papier.util.make_simple_config_text(rouge_paths)

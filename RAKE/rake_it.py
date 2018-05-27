@@ -7,7 +7,7 @@ import utils
 import json
 
 '''
-Runs the RAKE algorithm on the dataset and created queries and their embeddings
+Runs the RAKE algorithm on the dataset and creates queries and their embeddings
 '''
 
 dataset = sys.argv[1]

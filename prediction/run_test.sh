@@ -1,1 +1,0 @@
-python3 rnnsum.py --query "The recorders will be flown to France for analysis" --files ~/material-data/test/2278923367718065367.txt --model-path ~/material-data/test/model.bin --summary-dir ~/material-data/test/out --embd-wordfile-path ../SIF/data/glove.840B.300d-freq500K.txt --embd-weightfile-path ../SIF/auxiliary_data/enwiki_vocab_min200.txt
