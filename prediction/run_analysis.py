@@ -13,6 +13,7 @@ for line in open(analysis_inputs_path).readlines()[1:]:
   doc_id = values[0]
   query_id = values[2]
   query = values[3]
+  domain = values[4]
   doc_path = values[5]
 
   print("doing: %s %s %s %s" % (doc_id,query_id,query,doc_path))
@@ -20,3 +21,4 @@ for line in open(analysis_inputs_path).readlines()[1:]:
   with open("/tmp/yan/query/queries.txt", "w") as wq: wq.write(query)
   run(port)
   os.system("mv %s %s/%s.%s.summary" % ("/tmp/yan/outputs/input.txt",analysis_outputs_dir,query_id,doc_id))
+  os.system("mv %s %s/%s.%s.png" % ("/tmp/yan/outputs/input.png",analysis_outputs_dir,query_id,doc_id))

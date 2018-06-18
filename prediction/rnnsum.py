@@ -1,5 +1,6 @@
 import os,sys,argparse,time,tempfile,socket
 import torch
+from scipy.spatial import distance as distance
 from torch.autograd import Variable
 from collections import namedtuple
 sys.path.append("../splitta")
@@ -15,12 +16,50 @@ from similarity_extractor import SimilarityExtractor
 
 SUMMARIZATION_TRIGGER = "7XXASDHHCESADDFSGHHSD"
 
+def cossim_weight(u, v):
+  raw = min(1.0, max(0.0, 1.0 - distance.cosine(u, v)))
+  clamped = raw if raw >= 0.2 else 0.0
+  return clamped
+
+def load_stopwords(stopwords_path):
+  stopwords = set()
+  with open(stopwords_path) as sf:
+    for line in sf.readlines():
+      stopwords.add(line.strip())
+  return stopwords
+
 class Summarizer(object):
 
-    def __init__(self, sif_model, predictor, splitta_model):
+    def __init__(self, sif_model, predictor, splitta_model, stopwords):
       self.em = sif_model
       self.predictor = predictor
       self.splitta_model = splitta_model
+      self.stopwords = stopwords
+    
+    def embed_word(self, word):
+      if word in self.em[0]: return self.em[1][self.em[0][word]]
+      return [100.0]*len(self.em[1][0])  # make sure default is distant from others
+
+    def sum2img(self, summary_dir, query_path):
+      # get weights
+      query_embd,_ = self.get_query_embd(query_path)
+      weights_dir = tempfile.mkdtemp()
+      for summary_fn in os.listdir(summary_dir):
+       weights = []
+       summary_path = os.path.join(summary_dir, summary_fn)
+       for sen in fileaslist(summary_path):
+        sen_weights = []
+        for word in sen.split(" "):
+          word_embd = self.embed_word(word)
+          weight = 0.0 if word.lower() in self.stopwords else cossim_weight(word_embd, query_embd)
+          assert(weight >= 0.0 and weight <= 1.0)
+          sen_weights.append(weight)
+        weights.append([str(w) for w in sen_weights])
+       write2file("\n".join([" ".join([str(w) for w in ws]) for ws in weights]),os.path.join(weights_dir, summary_fn))
+      
+      # gen image
+      os.system("./gen_images.sh %s %s %s" % (summary_dir, weights_dir, summary_dir))
+      os.system("rm -r %s" % weights_dir)
 
     def summarize_text(self, raw_text_path, query, portion=None, max_length=100,rescore=False):
       assert rescore==True or rescore==False
@@ -48,23 +87,25 @@ class Summarizer(object):
       write2file("\n".join([wt.normalize(line) for line in fileaslist(sens_path)]), out_file_name)
       return out_file_name
    
-    def get_embds(self, norm_text_path, query_path):
-
+    def get_query_embd(self, query_path):
       # extract the query from the query_path
       query = fileaslist(query_path)[0]
-      
-      # deal with the text
-      out_f = tempfile.NamedTemporaryFile()
-      em.print_embeddings(em.get_embeddings(self.em[0],self.em[1],self.em[2],self.em[3],norm_text_path,self.em[4]), out_f.name) 
-      sen_embds = [[float(x) for x in line.split(" ")] for line in fileaslist(out_f.name)]     
- 
       # deal with query
       qin_f = tempfile.NamedTemporaryFile()
       write2file(wt.normalize(query), qin_f.name)
       qout_f = tempfile.NamedTemporaryFile()
       em.print_embeddings(em.get_embeddings(self.em[0],self.em[1],self.em[2],self.em[3],qin_f.name,self.em[4]), qout_f.name)
       qry_embds = [float(x) for x in fileaslist(qout_f.name)[0].split(" ")]
-      return sen_embds,qry_embds,query
+      return qry_embds,query
+
+    def get_embds(self, norm_text_path, query_path):
+
+      # deal with the text
+      out_f = tempfile.NamedTemporaryFile()
+      em.print_embeddings(em.get_embeddings(self.em[0],self.em[1],self.em[2],self.em[3],norm_text_path,self.em[4]), out_f.name) 
+      sen_embds = [[float(x) for x in line.split(" ")] for line in fileaslist(out_f.name)]     
+      qry_embds,query = self.get_query_embd(query_path)
+      return sen_embds, qry_embds, query
 
     def ingest_text(self, raw_text_path, query_path):
         sens_text_path = self.split2sens(raw_text_path)
@@ -106,11 +147,16 @@ def main():
         "--embd-similarity", required=False, type=str, default="False")
     parser.add_argument(
         "--portion", required=False, default=None, type=float)
+    parser.add_argument(
+        "--stopwords", required=False, default="stopwords.txt", type=str)
+    parser.add_argument(
+        "--gen-image", required=False, type=str, default="True")
     args = parser.parse_args()
     
     args.rescore=args.rescore=="True"
     args.text_similarity=args.text_similarity=="True"
     args.embd_similarity=args.embd_similarity=="True"
+    args.gen_image=args.gen_image=="True"
 
     if not os.path.exists(args.summary_dir):
         os.makedirs(args.summary_dir)
@@ -128,12 +174,15 @@ def main():
     embd_params = em.params.params()
     embd_params.rmpc = 0
     sif_model = (words, We, word2weight, weight4ind, embd_params)
-    
+
+    # stopwords
+    stopwords = load_stopwords(args.stopwords)    
+
     # prepare splitta
     splitta_model = sbd.load_sbd_model("../splitta/model_nb/",use_svm=False)
 
     # create the summarizer
-    summarizer = Summarizer(sif_model, model, splitta_model)
+    summarizer = Summarizer(sif_model, model, splitta_model, stopwords)
 
     # start the server and listen to summarization requests
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -153,7 +202,8 @@ def main():
                       input_path, query=args.query, portion=args.portion, max_length=args.length, rescore=args.rescore)
           output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
           with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
-          os.chmod(output_path, 0o777)
+        if args.gen_image: summarizer.sum2img(args.summary_dir, args.query)
+        os.system("chmod -R 777 %s" % args.summary_dir)
         clientsocket.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
 
 if __name__ == "__main__":

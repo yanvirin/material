@@ -1,0 +1,11 @@
+[0m[[0m[31merror[0m] [0m[0m/storage/proj/yan/material/prediction/TextToGraphics.scala:55:36: type mismatch;[0m
+[0m[[0m[31merror[0m] [0m[0m found   : Double[0m
+[0m[[0m[31merror[0m] [0m[0m required: Int[0m
+[0m[[0m[31merror[0m] [0m[0m    img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)[0m
+[0m[[0m[31merror[0m] [0m[0m                                   ^[0m
+[0m[[0m[31merror[0m] [0m[0m/storage/proj/yan/material/prediction/TextToGraphics.scala:69:28: type mismatch;[0m
+[0m[[0m[31merror[0m] [0m[0m found   : Double[0m
+[0m[[0m[31merror[0m] [0m[0m required: Int[0m
+[0m[[0m[31merror[0m] [0m[0m    g2d.fillRect(0,0,width,height)[0m
+[0m[[0m[31merror[0m] [0m[0m                           ^[0m
+[0m[[0m[31merror[0m] [0m[0mtwo errors found[0m

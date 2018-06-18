@@ -54,7 +54,7 @@ with open(args.feats_file_path,"w") as fw:
    # get a squad document
    sens = []
    embeddings = []
-   for p in d["paragraphs"]:
+   for p in d["paragraphs"][:30]:
      write2file(p["context"],raw_text_path)
      sens_text_path = featurizer.split2sens(raw_text_path)
      norm_text_path = featurizer.normalize(sens_text_path)
