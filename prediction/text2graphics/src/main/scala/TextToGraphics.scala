@@ -91,10 +91,10 @@ object TextToGraphics {
 
   def main(args: Array[String]) {
 
-    val path = args(1)
-    val weightsPath = args(2)
-    val wrapN = args(3).toInt
-    val outPath = args(4)
+    val path = args(0)
+    val weightsPath = args(1)
+    val wrapN = args(2).toInt
+    val outPath = args(3)
 
     new File(outPath).mkdirs()
 

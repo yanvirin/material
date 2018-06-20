@@ -1,4 +1,4 @@
-import os,sys,argparse,time,tempfile,socket
+import os,sys,argparse,time,tempfile,socket,json
 import torch
 from scipy.spatial import distance as distance
 from torch.autograd import Variable
@@ -89,7 +89,9 @@ class Summarizer(object):
    
     def get_query_embd(self, query_path):
       # extract the query from the query_path
-      query = fileaslist(query_path)[0]
+      with open(query_path) as qr:
+        query_dict = json.load(qr)
+      query = query_dict["parsed_query"][0]["content"]
       # deal with query
       qin_f = tempfile.NamedTemporaryFile()
       write2file(wt.normalize(query), qin_f.name)
@@ -118,17 +120,34 @@ class Summarizer(object):
         sent_tokens = [sen.split(" ") for sen in fileaslist(norm_text_path)]
         return get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, query=query)
 
+def get_input_paths(folder, qResults):
+  paths = []
+  if qResults:
+    with open(qResults) as r:
+      results = json.load(r)
+      for res in results["results"]:
+        index_toks = res["index"].replace("index_store","mt_store").split("/")
+        filename = res["filename"]
+        paths.append("%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2], filename))
+  else:
+    for path in os.listdir(folder):
+      paths.append("%s/%s" % (folder, path))
+  return paths
+      
+
 def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--query", default=os.getenv("QUERY_STR"),
+        "--query-folder", default=os.getenv("QUERY_STR"),
         type=str, required=False)
     parser.add_argument(
         "--model-path", default=os.getenv("RNNSUM_PATH"),
         type=str, required=False)
     parser.add_argument(
         "--folder", type=str, required=True)
+    parser.add_argument(
+        "--results", type=str, required=False, default=None)
     parser.add_argument(
         "--length", default=100, type=int)
     parser.add_argument(
@@ -189,22 +208,32 @@ def main():
     serversocket.bind(("", args.port))
     serversocket.listen(5)
 
-    print("Loaded all models successfully, ver:04/10/18_11:00PST, ready to accept requests on %d with rescore=%s, portion=%s,similarity text and embd: %s,%s" % (args.port, args.rescore==True, args.portion, args.text_similarity, args.embd_similarity))
+    print("Loaded all models successfully, ver:06/20/18_12:00PST, ready to accept requests on %d with rescore=%s, portion=%s,similarity text and embd: %s,%s" % (args.port, args.rescore==True, args.portion, args.text_similarity, args.embd_similarity))
 
+    temp_out = tempfile.mkdtemp()
     while 1:
       (clientsocket, address) = serversocket.accept()
       data = clientsocket.recv(1000000)
-      if str(data, "utf-8") == SUMMARIZATION_TRIGGER:
-        # go over all the input files and run summarization
-        for input_path in os.listdir(args.folder):
-          input_path = args.folder + "/" + input_path
+      params = json.loads(str(data, "utf-8"))
+      qExpansion = params["qExpansion"]
+      qResults = params["qResults"] if "qResults" in params else None
+      input_paths = get_input_paths(args.folder, args.results + "/" + qResults)
+
+      summary_dir = args.summary_dir + "/" + qExpansion
+      os.system("mkdir -p %s" % summary_dir)
+
+      # go over all the input files and run summarization
+      query_path = os.path.join(args.query_folder,qExpansion)
+      for input_path in input_paths:
           summary = summarizer.summarize_text(
-                      input_path, query=args.query, portion=args.portion, max_length=args.length, rescore=args.rescore)
-          output_path = os.path.join(args.summary_dir, os.path.basename(input_path))
+                      input_path, query=query_path, portion=args.portion, 
+                      max_length=args.length, rescore=args.rescore)
+          output_path = os.path.join(temp_out, os.path.basename(input_path))
           with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
-        if args.gen_image: summarizer.sum2img(args.summary_dir, args.query)
-        os.system("chmod -R 777 %s" % args.summary_dir)
-        clientsocket.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
+      if args.gen_image: summarizer.sum2img(temp_out, query_path)
+      os.system("mv %s/* %s/" % (temp_out,summary_dir))
+      os.system("chmod -R 777 %s" % summary_dir)
+      clientsocket.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
 
 if __name__ == "__main__":
     main()
