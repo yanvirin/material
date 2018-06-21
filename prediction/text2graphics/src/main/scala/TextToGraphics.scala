@@ -20,7 +20,6 @@ object TextToGraphics {
     var wordsBuf = ArrayBuffer[(String,Double)]()
     var size = 0
     for ((words,ws) <- sens zip weights) {
-      println(s"${words.length} vs. ${ws.length}")
       assert(words.length == ws.length)
       var idx = 0
       var size = 0
@@ -77,7 +76,6 @@ object TextToGraphics {
       for ((word, weight) <- sen) {
         val c = new Color(255,255,255)
         //val c = new Color(255-(255*weight).toInt,255,255-(255*weight).toInt)
-        //println(s"using color ${c}")
         g2d.setColor(c)
         val toDraw = if (firstWord && !word.startsWith("*")) "   "+word else word
         g2d.drawString(toDraw, x, y + i*(fm.getHeight + 5))
@@ -105,7 +103,6 @@ object TextToGraphics {
       val img = draw(sentences)
       val outFilePath = outPath + "/" + file.getName.split("\\.").dropRight(1).mkString(".") + ".png"
       ImageIO.write(img, "png", new File(outFilePath))
-      println(s"created ${outFilePath}")
     }
   }
 }

@@ -44,22 +44,24 @@ class Summarizer(object):
       # get weights
       query_embd,_ = self.get_query_embd(query_path)
       weights_dir = tempfile.mkdtemp()
-      for summary_fn in os.listdir(summary_dir):
-       weights = []
-       summary_path = os.path.join(summary_dir, summary_fn)
-       for sen in fileaslist(summary_path):
-        sen_weights = []
-        for word in sen.split(" "):
-          word_embd = self.embed_word(word)
-          weight = 0.0 if word.lower() in self.stopwords else cossim_weight(word_embd, query_embd)
-          assert(weight >= 0.0 and weight <= 1.0)
-          sen_weights.append(weight)
-        weights.append([str(w) for w in sen_weights])
-       write2file("\n".join([" ".join([str(w) for w in ws]) for ws in weights]),os.path.join(weights_dir, summary_fn))
+      try:
+       for summary_fn in os.listdir(summary_dir):
+         weights = []
+         summary_path = os.path.join(summary_dir, summary_fn)
+         for sen in fileaslist(summary_path):
+           sen_weights = []
+           for word in sen.split(" "):
+             word_embd = self.embed_word(word)
+             weight = 0.0 if word.lower() in self.stopwords else cossim_weight(word_embd, query_embd)
+             assert(weight >= 0.0 and weight <= 1.0)
+             sen_weights.append(weight)
+           weights.append([str(w) for w in sen_weights])
+         write2file("\n".join([" ".join([str(w) for w in ws]) for ws in weights]),os.path.join(weights_dir, summary_fn))
       
-      # gen image
-      os.system("./gen_images.sh %s %s %s" % (summary_dir, weights_dir, summary_dir))
-      os.system("rm -r %s" % weights_dir)
+       # gen image
+       os.system("./gen_images.sh %s %s %s" % (summary_dir, weights_dir, summary_dir))
+      finally: 
+       os.system("rm -r %s" % weights_dir)
 
     def summarize_text(self, raw_text_path, query, portion=None, max_length=100,rescore=False):
       assert rescore==True or rescore==False
@@ -170,6 +172,8 @@ def main():
         "--stopwords", required=False, default="stopwords.txt", type=str)
     parser.add_argument(
         "--gen-image", required=False, type=str, default="True")
+    pasrser.add_argument(
+        "--workDir", required=False, type=str, default=".")
     args = parser.parse_args()
     
     args.rescore=args.rescore=="True"
