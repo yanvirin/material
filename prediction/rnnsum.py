@@ -172,7 +172,7 @@ def main():
         "--stopwords", required=False, default="stopwords.txt", type=str)
     parser.add_argument(
         "--gen-image", required=False, type=str, default="True")
-    pasrser.add_argument(
+    parser.add_argument(
         "--workDir", required=False, type=str, default=".")
     args = parser.parse_args()
     
