@@ -11,7 +11,7 @@ def run(args):
   
   tries = 0
   success = False
-  while(not success && tries < args.maxWaitAttempts):
+  while(not success and tries < args.maxWaitAttempts):
     try:
       s.connect(("0.0.0.0", args.port))
       success = True
