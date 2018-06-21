@@ -4,7 +4,6 @@ import sys, socket, argparse, json, time
 This is the summarization triggering command that the server
 is listening to
 '''
-MAX_TRIES = 100
 SUMMARIZATION_TRIGGER = "7XXASDHHCESADDFSGHHSD"
 
 def run(args):
@@ -17,8 +16,9 @@ def run(args):
     except (RuntimeError,ConnectionRefusedError):
       tries += 1
       time.sleep(args.waitTime)
-      if retries == MAX_TRIES: sys.exit(1)
-      print("Failed to connect within the specified timeframe %d wait time x %d tries" % (args.waitTime,args.maxWaitAttempts))
+      if tries == args.maxWaitAttempts: 
+        sys.exit(1)
+        print("Failed to connect within the specified timeframe %d wait time x %d tries" % (args.waitTime,args.maxWaitAttempts))
 
   d = {"qExpansion": args.qExpansion, "qResults": args.qResults, "experiment": args.experiment, "dataStructure": args.dataStructure}
   s.send(json.dumps(d).encode("utf-8"))
