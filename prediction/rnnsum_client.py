@@ -10,9 +10,11 @@ def run(args):
   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   
   tries = 0
-  while(tries < args.maxWaitAttempts):
+  success = False
+  while(not success && tries < args.maxWaitAttempts):
     try:
       s.connect(("0.0.0.0", args.port))
+      success = True
     except (RuntimeError,ConnectionRefusedError):
       tries += 1
       time.sleep(args.waitTime)
