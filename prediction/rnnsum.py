@@ -125,7 +125,7 @@ def get_input_paths(folder, qResults):
   if qResults:
     with open(qResults) as r:
       results = json.load(r)
-      for res in results["results"]:
+      for res in results["document_info"]["results"]:
         index_toks = res["index"].replace("index_store","mt_store").split("/")
         filename = res["filename"]
         paths.append("%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2], filename))
