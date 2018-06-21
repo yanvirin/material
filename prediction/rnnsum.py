@@ -222,17 +222,20 @@ def main():
       summary_dir = args.summary_dir + "/" + qExpansion
       os.system("mkdir -p %s" % summary_dir)
 
-      # go over all the input files and run summarization
-      query_path = os.path.join(args.query_folder,qExpansion)
-      for input_path in input_paths:
+      try:
+        # go over all the input files and run summarization
+        query_path = os.path.join(args.query_folder,qExpansion)
+        for input_path in input_paths:
           summary = summarizer.summarize_text(
                       input_path, query=query_path, portion=args.portion, 
                       max_length=args.length, rescore=args.rescore)
           output_path = os.path.join(temp_out, os.path.basename(input_path))
           with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
-      if args.gen_image: summarizer.sum2img(temp_out, query_path)
-      os.system("mv %s/* %s/" % (temp_out,summary_dir))
-      os.system("chmod -R 777 %s" % summary_dir)
+        if args.gen_image: summarizer.sum2img(temp_out, query_path)
+        os.system("mv %s/* %s/" % (temp_out,summary_dir))
+        os.system("chmod -R 777 %s" % summary_dir)
+      except Exception as e:
+        print("error occured: " + e)
       clientsocket.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
 
 if __name__ == "__main__":
