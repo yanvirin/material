@@ -236,7 +236,7 @@ def main():
           output_path = os.path.join(temp_out, os.path.basename(input_path))
           with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
         if args.gen_image: summarizer.sum2img(temp_out, query_path)
-        os.system("mv %s/* %s/" % (temp_out,summary_dir))
+        os.system("mv %s/* %s/ 2> /dev/null" % (temp_out,summary_dir))
         os.system("chmod -R 777 %s" % summary_dir)
       except Exception as e:
         print("error occured: " + e)
