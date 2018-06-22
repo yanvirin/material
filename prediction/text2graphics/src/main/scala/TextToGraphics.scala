@@ -97,7 +97,7 @@ object TextToGraphics {
     new File(outPath).mkdirs()
 
     for (file <- new File(path).listFiles()) {
-      val words = Source.fromFile(file).getLines().toSeq.map(s => ("* "+s).split("\\s+").toSeq)
+      val words = Source.fromFile(file, "UTF-8").getLines().toSeq.map(s => ("* "+s).split("\\s+").toSeq)
       val weights = Source.fromFile(weightsPath + "/" + file.getName()).getLines().toSeq.map(w => ("0.0 "+w).split(" ").toSeq.map(_.toDouble))
       val sentences = wrapSentences(words, wrapN, weights=weights)
       val img = draw(sentences)
