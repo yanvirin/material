@@ -122,20 +122,35 @@ class Summarizer(object):
         sent_tokens = [sen.split(" ") for sen in fileaslist(norm_text_path)]
         return get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, query=query)
 
-def get_input_paths(folder, qResults):
+# decides how to get the input texts
+def get_input_paths(folder, qResults, language):
   paths = []
-  if qResults:
+  if os.path.isfile(qResults):
     with open(qResults) as r:
       results = json.load(r)
       for res in results["document info"]["results"]:
-        index_toks = res["index"].replace("index_store","mt_store").split("/")
-        filename = res["filename"]
-        paths.append("%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2], filename))
+        index = res["index"]
+        if language == "en":
+          index_toks = index.replace("index_store","mt_store").split("/")
+          filename = res["filename"]
+          paths.append("%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2], filename))
+        else:
+          # check that the correct laguage was selected in the server
+          assert(language=="sw" and "1A/" in index or language=="tl" and "1B/" in index)
+          input_name = tempfile.NamedTemporaryFile().name 
+          index_toks = index.replace("index_store","morphology_store").split("/")
+          morph_store = "%s/%s" % (folder, "/".join(index_toks[:5]))
+          morpho_ver = filter(lambda x: "3.0" in x, os.listdir(morph_store))[0]
+          with open(input_name, "w") as w:
+           with open("%s/%s/%s" % (morpho_store, morpho_ver, filename)) as r:
+            for line in r:
+              d = json.loads(r)
+              if len(d) > 0: w.write(" ".join(map(lambda x: x["word"], d[0])) + "\n")
+          paths.add(input_name)    
   else:
     for path in os.listdir(folder):
       paths.append("%s/%s" % (folder, path))
   return paths
-      
 
 def main():
     parser = argparse.ArgumentParser()
@@ -149,7 +164,7 @@ def main():
     parser.add_argument(
         "--folder", type=str, required=True)
     parser.add_argument(
-        "--results", type=str, required=False, default=None)
+        "--results", type=str, required=False, default="")
     parser.add_argument(
         "--length", default=100, type=int)
     parser.add_argument(
@@ -174,6 +189,8 @@ def main():
         "--gen-image", required=False, type=str, default="True")
     parser.add_argument(
         "--workDir", required=False, type=str, default=".")
+    parser.add_argument(
+        "--language", required=True, type=str, default="en")
     args = parser.parse_args()
     
     args.rescore=args.rescore=="True"
@@ -184,19 +201,21 @@ def main():
     if not os.path.exists(args.summary_dir):
         os.makedirs(args.summary_dir)
 
-    if args.text_similarity or args.embd_similarity:
-      model = SimilarityExtractor(use_text_cosine=args.text_similarity, use_embd_cosine=args.embd_similarity)
-      print("Not loading torch models, using similarity.")
-    else:
-      model = torch.load(args.model_path, map_location=lambda storage, loc: storage)
-    
     # initialize the sif embeddings stuff
     (words, We) = em.data_io.getWordmap(args.embd_wordfile_path)
+    embd_dim = len(We[0])
     word2weight = em.data_io.getWordWeight(args.embd_weightfile_path, 1e-3)
     weight4ind = em.data_io.getWeight(words, word2weight)
     embd_params = em.params.params()
     embd_params.rmpc = 0
     sif_model = (words, We, word2weight, weight4ind, embd_params)
+
+    if args.text_similarity or args.embd_similarity:
+      model = SimilarityExtractor(use_text_cosine=args.text_similarity, use_embd_cosine=args.embd_similarity, 
+              embd_dim=embd_dim)
+      print("Not loading torch models, using similarity.")
+    else:
+      model = torch.load(args.model_path, map_location=lambda storage, loc: storage)
 
     # stopwords
     stopwords = load_stopwords(args.stopwords)    
@@ -205,7 +224,7 @@ def main():
     splitta_model = sbd.load_sbd_model("../splitta/model_nb/",use_svm=False)
 
     # create the summarizer
-    summarizer = Summarizer(sif_model, model, splitta_model, stopwords)
+    summarizer = Summarizer(sif_model, model, splitta_model, stopwords, args.language)
 
     # start the server and listen to summarization requests
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -220,7 +239,7 @@ def main():
       data = clientsocket.recv(1000000)
       params = json.loads(str(data, "utf-8"))
       qExpansion = params["qExpansion"]
-      qResults = params["qResults"] if "qResults" in params else None
+      qResults = params["qResults"] if "qResults" in params else "None"
       input_paths = get_input_paths(args.folder, args.results + "/" + qResults)
 
       summary_dir = args.summary_dir + "/" + qExpansion

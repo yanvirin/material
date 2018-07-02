@@ -6,7 +6,7 @@ The resulting string is split on whitespace.
 (Adapted from the Punkt Word Tokenizer)
 """
 
-_normalize_regexp = re.compile("[^A-Za-z'0-9]+")
+_normalize_regexp = re.compile("[^\-A-Za-z0-9]+")
 
 _tokenize_regexps = [
 
