@@ -44,7 +44,7 @@ def get_translated_query(query_data):
             # There was no translation -- use english query word and hope!
             results.append([(1.0, item[0])])
     out_query = " ".join([x[0][1] for x in results])
-    print("translated query: %s" % out_query)
+    if DEBUG: print("translated query: %s" % out_query)
     return out_query
 
 def load_stopwords(stopwords_path):
@@ -152,7 +152,7 @@ class Summarizer(object):
         sen_embds,qry_embds,query = self.get_embds(norm_text_path, query_path)
 
         assert(len(fileaslist(sens_text_path)) == len(fileaslist(norm_text_path)))
-        print("compare sizes: %d - %d" % (len(fileaslist(sens_text_path2)),len(fileaslist(norm_text_path))))
+        if DEBUG: print("compare sizes: %d - %d" % (len(fileaslist(sens_text_path2)),len(fileaslist(norm_text_path))))
         assert(len(fileaslist(sens_text_path2)) == len(fileaslist(norm_text_path)))
 
         clean_texts = fileaslist(sens_text_path2)
@@ -162,7 +162,6 @@ class Summarizer(object):
 # decides how to get the input texts
 def get_input_paths(folder, qResults, language):
   paths = []
-  print("trying to search for %s" % qResults)
   if os.path.isfile(qResults):
     with open(qResults) as r:
       results = json.load(r)
@@ -179,7 +178,7 @@ def get_input_paths(folder, qResults, language):
           input_name = tempfile.NamedTemporaryFile().name
           index_toks = index.replace("index_store","morphology_store").split("/")
           morpho_store = "%s/%s" % (folder, "/".join(index_toks[:5]))
-          print("looking in morpho store: %s" % morpho_store)
+          if DEBUG: print("looking in morpho store: %s" % morpho_store)
           morpho_ver = list(filter(lambda x: "morph-v3.0" in x.name and ("v4.0" in x.name or "audio" not in ep), sorted(Path(morpho_store).iterdir(), key=lambda f: f.stat().st_mtime)))[-1].name
           #list(filter(lambda x: "morph-v3.0" in x, os.listdir(morpho_store)))[0]
           input_file = "%s/%s/%s.txt" % (morpho_store, morpho_ver, filename)
@@ -193,7 +192,7 @@ def get_input_paths(folder, qResults, language):
                 w.write("empty.\n")
           paths.append((input_name, ep))
           if (len(fileaslist(input_name))!=len(list(filter(lambda x: len(x)>0,fileaslist(ep))))): 
-            print("DEBUG: diff sizes %s vs %s" % (input_file, ep))
+            if DEBUG: print("DEBUG: diff sizes %s vs %s" % (input_file, ep))
   else:
     for path in os.listdir(folder):
       p = "%s/%s" % (folder, path)
@@ -245,6 +244,8 @@ def main():
         "--highlight", required=False, type=str, default="None")
     parser.add_argument(
         "--translate-query", required=False, type=str, default="False")
+    parser.add_argument(
+        "--debug", required=False, type=str, default="False")
     args = parser.parse_args()
     
     args.rescore=args.rescore=="True"
@@ -253,6 +254,8 @@ def main():
     args.gen_image=args.gen_image=="True"
     args.segment=args.segment=="True"
     args.translate_query=args.translate_query=="True"
+    global DEBUG
+    DEBUG=args.debug=="True"
 
     if not os.path.exists(args.summary_dir):
         os.makedirs(args.summary_dir)
@@ -305,7 +308,7 @@ def main():
         # go over all the input files and run summarization
         query_path = os.path.join(args.query_folder,qExpansion)
         for input_path,input_path2 in input_paths:
-          print("DEBUG: working on %s and %s" % (input_path,input_path2))
+          if DEBUG: print("DEBUG: working on %s and %s" % (input_path,input_path2))
           summary = summarizer.summarize_text(
                       input_path, input_path2, query=query_path, portion=args.portion, 
                       max_length=args.length, rescore=args.rescore)
