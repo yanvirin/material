@@ -137,7 +137,7 @@ class Summarizer(object):
       return qry_embds,query
 
     def get_embds(self, norm_text_path, query_path):
-
+   
       # deal with the text
       out_f = tempfile.NamedTemporaryFile()
       em.print_embeddings(em.get_embeddings(self.em[0],self.em[1],self.em[2],self.em[3],norm_text_path,self.em[4]), out_f.name) 
@@ -169,7 +169,7 @@ def get_input_paths(folder, qResults, language):
         index = res["index"]
         index_toks = index.replace("index_store","mt_store").split("/")
         filename = res["filename"]
-        ep = "%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2].replace("nmt","smt"), filename)
+        ep = "%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2], filename)
         if language == "en":
           paths.append((ep,ep))
         else:
@@ -309,11 +309,13 @@ def main():
         query_path = os.path.join(args.query_folder,qExpansion)
         for input_path,input_path2 in input_paths:
           if DEBUG: print("DEBUG: working on %s and %s" % (input_path,input_path2))
-          summary = summarizer.summarize_text(
+          try:
+            summary = summarizer.summarize_text(
                       input_path, input_path2, query=query_path, portion=args.portion, 
-                      max_length=args.length, rescore=args.rescore)
-          output_path = os.path.join(temp_out, os.path.basename(input_path2))
-          with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
+                       max_length=args.length, rescore=args.rescore)
+            output_path = os.path.join(temp_out, os.path.basename(input_path2))
+            with open(output_path, "w", encoding="utf-8") as fp: fp.write(summary)
+          except: traceback.print_exc()
         if args.gen_image: summarizer.sum2img(temp_out, query_path, args.highlight)
         os.system("mv %s/* %s/ 2> /dev/null" % (temp_out,summary_dir))
         os.system("chmod -R 777 %s" % summary_dir)
