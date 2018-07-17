@@ -6,15 +6,16 @@ from word_tokenize import normalize
 
 class SimilarityExtractor:
 
-  def __init__(self, use_text_cosine, use_embd_cosine):
+  def __init__(self, use_text_cosine, use_embd_cosine, embd_dim):
     self.use_text_cosine = use_text_cosine
     self.use_embd_cosine = use_embd_cosine
+    self.embd_dim = embd_dim
 
   def get_embd_scores(self, inputs):
     embedding = inputs.embedding.data
     # narrow the input tensor
-    sen_embeds = embedding.narrow(2, 0, 300)
-    query_embeds = embedding.narrow(2, 300, 300)
+    sen_embeds = embedding.narrow(2, 0, self.embd_dim)
+    query_embeds = embedding.narrow(2, self.embd_dim, self.embd_dim)
 
     # compute the cosine similarity
     cos = cosim(dim=2)
@@ -44,6 +45,7 @@ class SimilarityExtractor:
 
   def extract(self, inputs, metadata, word_limit, rescore):
     summaries = []
+    idxs = []
     embd_scores = self.get_embd_scores(inputs)
     text_scores = self.get_text_scores(metadata)
     final_scores = []
@@ -64,6 +66,7 @@ class SimilarityExtractor:
     
     for b in range(len(metadata.text)):
       summary = []
+      idx = []
       indices = np.argsort([-s for s in final_scores[b]])
       count = 0
       for i in indices:
@@ -71,11 +74,13 @@ class SimilarityExtractor:
         c = len(candidate.split(" "))
         if count + c <= word_limit:
           summary.append(candidate)
+          idx.append(i)
           count += c
         if count + c == word_limit: break
       summaries.append("\n".join(summary))
+      idxs.append(idx)
       
-    return summaries, None
+    return summaries, idxs
 
 if __name__ == "__main__":
   extractor = SimilarityExtractor(False,False)

@@ -11,7 +11,7 @@ def getWordmap(textfile):
     f = open(textfile,'r')
     lines = f.readlines()
     for (n,i) in enumerate(lines):
-        i=i.split()
+        i=i.strip().split(" ")
         j = 1
         v = []
         while j < len(i):
@@ -19,7 +19,8 @@ def getWordmap(textfile):
             j += 1
         words[i[0]]=n
         We.append(v)
-    return (words, np.array(We))
+    res =  (words, np.array(We))
+    return res
 
 def prepare_data(list_of_seqs):
     lengths = [len(s) for s in list_of_seqs]

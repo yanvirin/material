@@ -12,7 +12,7 @@ import random
 import rouge_papier
 from spensum.scripts.baselines.train_rnn_extractor import collect_reference_paths
 
-def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, query="", minTokens = 3):
+def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, query="", minTokens = 0):
   # filter out very short sentences
   short = []
   for i,tokens in enumerate(sent_tokens): 

@@ -39,7 +39,7 @@ object TextToGraphics {
     sentences
   }
 
-  def draw(sentences: Seq[Seq[(String,Double)]]) = {
+  def draw(sentences: Seq[Seq[(String,Double)]], highlight: Boolean) = {
 
     var img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
     var g2d = img.createGraphics
@@ -65,7 +65,6 @@ object TextToGraphics {
     g2d.setFont(font)
     fm = g2d.getFontMetrics
     g2d.setColor(new Color(0,0,0))
-    //g2d.setColor(new Color(255,255,255))
     g2d.fillRect(0,0,width,height)
 
     var y = fm.getAscent
@@ -74,8 +73,8 @@ object TextToGraphics {
       x = 3
       var firstWord = true
       for ((word, weight) <- sen) {
-        val c = new Color(255,255,255)
-        //val c = new Color(255-(255*weight).toInt,255,255-(255*weight).toInt)
+        val c = 
+          if (!highlight) new Color(255,255,255) else new Color(255-(255*weight).toInt,255,255-(255*weight).toInt)
         g2d.setColor(c)
         val toDraw = if (firstWord && !word.startsWith("*")) "   "+word else word
         g2d.drawString(toDraw, x, y + i*(fm.getHeight + 5))
@@ -93,6 +92,7 @@ object TextToGraphics {
     val weightsPath = args(1)
     val wrapN = args(2).toInt
     val outPath = args(3)
+    val highlight = if (args.length > 4) args(4) == "highlight" else false
 
     new File(outPath).mkdirs()
 
@@ -100,7 +100,7 @@ object TextToGraphics {
       val words = Source.fromFile(file, "UTF-8").getLines().toSeq.map(s => ("* "+s).split("\\s+").toSeq)
       val weights = Source.fromFile(weightsPath + "/" + file.getName()).getLines().toSeq.map(w => ("0.0 "+w).split(" ").toSeq.map(_.toDouble))
       val sentences = wrapSentences(words, wrapN, weights=weights)
-      val img = draw(sentences)
+      val img = draw(sentences, highlight=highlight)
       val outFilePath = outPath + "/" + file.getName.split("\\.").dropRight(1).mkString(".") + ".png"
       ImageIO.write(img, "png", new File(outFilePath))
     }
