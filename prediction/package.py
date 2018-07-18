@@ -24,7 +24,7 @@ data = defaultdict(list)
 
 # write all the data to the files and rename images and summaries
 # to fit the correct format
-for q_f in os.listdir(args.query_folder):
+for q_f in os.listdir(args.summary_dir):
   qid = q_f
   res_f = "q-%s.json" % qid
   with open("%s/%s" % (args.query_folder,qid)) as qr: qdict = json.load(qr)
