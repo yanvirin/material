@@ -67,3 +67,4 @@ output_folder = tempfile.mkdtemp()
 for q_f in os.listdir(args.summary_dir):
   os.system("tar -czvf %s/%s.tgz -C %s %s" % (output_folder,q_f,args.summary_dir,q_f))
 os.system("tar -czvf %s -C %s ." % (package_path,output_folder))
+os.system("chmod 777 %s" % package_path)
