@@ -69,5 +69,5 @@ for q_f in os.listdir(args.summary_dir):
   os.system("tar -czvf %s/%s.tgz -C %s %s" % (output_folder,q_f,args.summary_dir,q_f))
 os.system("chmod 777 -R %s" % output_folder)
 os.system("tar -czvf %s -C %s ." % (package_path,output_folder))
-os.system("chmod 777 %s" % package_path)
+os.system("chmod 777 -R %s" % args.package_dir)
 os.system("rm -rf %s" % output_folder)
