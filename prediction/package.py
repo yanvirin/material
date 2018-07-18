@@ -62,7 +62,7 @@ for q_f in os.listdir(args.summary_dir):
         rw.write("\n")
 
 # pacakge the stuff
-package_path = "summary-package.tgz"
+package_path = "%s/summary-package.tgz" % args.package_dir
 output_folder = tempfile.mkdtemp()
 for q_f in os.listdir(args.summary_dir):
   os.system("tar -czvf %s/%s.tgz -C %s %s" % (output_folder,q_f,args.summary_dir,q_f))
