@@ -75,6 +75,6 @@ os.system("tar -czvf %s -C %s ." % (package_path,output_folder))
 os.system("rm -rf %s" % output_folder)
 
 #rename
-with open("%s/%s" % args.exp_path) as expr: pipeline_data = json.load(expr)
+with open(args.exp_path) as expr: pipeline_data = json.load(expr)
 rename_submission(pipeline_data, package_path, args.package_dir, renaming_script_path)
 os.system("chmod 777 -R %s" % args.package_dir)
