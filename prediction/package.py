@@ -16,7 +16,7 @@ parser.add_argument("--results-folder", type=str, required=True)
 parser.add_argument("--summary-dir", type=str, required=True)
 parser.add_argument("--run-name", type=str, required=True)
 parser.add_argument("--package-dir", type=str, required=True)
-parser.add_argument("--experiment", type=str, required=True)
+parser.add_argument("--exp-path", type=str, required=True)
 
 args = parser.parse_args()
 
@@ -75,6 +75,6 @@ os.system("tar -czvf %s -C %s ." % (package_path,output_folder))
 os.system("rm -rf %s" % output_folder)
 
 #rename
-with open("%s/%s" % (args.package_dir,args.experiment)) as expr: pipeline_data = json.load(expr)
+with open("%s/%s" % args.exp_path) as expr: pipeline_data = json.load(expr)
 rename_submission(pipeline_data, package_path, args.package_dir, renaming_script_path)
 os.system("chmod 777 -R %s" % args.package_dir)
