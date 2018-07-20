@@ -125,7 +125,7 @@ class Summarizer(object):
    
     def get_query_embd(self, query_path):
       # extract the query from the query_path
-      with open(query_path) as qr:
+      with open(query_path,encoding="utf-8") as qr:
         query_dict = json.load(qr)
       query = query_dict["parsed_query"][0]["content"] if not self.translate_query else get_translated_query(query_dict) 
       # deal with query
