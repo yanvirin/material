@@ -51,7 +51,7 @@ def get_translated_query(query_data):
 
 def load_stopwords(stopwords_path):
   stopwords = set()
-  with open(stopwords_path) as sf:
+  with open(stopwords_path,encoding="utf-8") as sf:
     for line in sf.readlines():
       stopwords.add(line.strip())
   return stopwords
@@ -118,7 +118,7 @@ class Summarizer(object):
    
     def get_query_embd(self, query_path):
       # extract the query from the query_path
-      with open(query_path) as qr:
+      with open(query_path,encoding="utf-8") as qr:
         query_dict = json.load(qr)
       query = query_dict["parsed_query"][0]["content"] if not self.translate_query else get_translated_query(query_dict) 
       # deal with query
@@ -156,7 +156,7 @@ class Summarizer(object):
 def get_input_paths(folder, qResults, language):
   paths = []
   if os.path.isfile(qResults):
-    with open(qResults) as r:
+    with open(qResults,encoding="utf-8") as r:
       results = json.load(r)
       for res in results["document info"]["results"]:
         index = res["index"]
@@ -176,7 +176,7 @@ def get_input_paths(folder, qResults, language):
           #list(filter(lambda x: "morph-v3.0" in x, os.listdir(morpho_store)))[0]
           input_file = "%s/%s/%s.txt" % (morpho_store, morpho_ver, filename)
           with open(input_name, "w") as w:
-           with open(input_file) as r:
+           with open(input_file,encoding="utf-8") as r:
             for line in r:
               d = json.loads(line)
               if len(d) > 0: 
