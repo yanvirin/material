@@ -271,7 +271,7 @@ def getWordWeight(weightfile, a=1e-3):
         a = 1.0
 
     word2weight = {}
-    with open(weightfile) as f:
+    with open(weightfile,encoding="utf-8") as f:
         lines = f.readlines()
     N = 0
     for i in lines:
