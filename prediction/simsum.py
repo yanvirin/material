@@ -1,6 +1,7 @@
 import os,sys,argparse,time,tempfile,socket,json,traceback
 from pathlib import Path
 import re
+import numpy as np
 import torch
 from scipy.spatial import distance as distance
 from torch.autograd import Variable
@@ -62,7 +63,7 @@ class Summarizer(object):
       self.predictor = predictor
       self.stopwords = stopwords
       self.translate_query = translate_query
-      self.langugage = langugage
+      self.language = language
     
     def embed_word(self, word):
       if word in self.em[0]: return self.em[1][self.em[0][word]]
@@ -171,7 +172,7 @@ def get_input_paths(folder, qResults, language):
           index_toks = index.replace("index_store","morphology_store").split("/")
           morpho_store = "%s/%s" % (folder, "/".join(index_toks[:5]))
           if DEBUG: print("looking in morpho store: %s" % morpho_store)
-          morpho_ver = list(filter(lambda x: "morph-v3.0" in x.name and ("v4.0" in x.name or "audio" not in ep), sorted(Path(morpho_store).iterdir(), key=lambda f: f.stat().st_mtime)))[-1].name
+          morpho_ver = list(filter(lambda x: "morph-v3.0" in x.name and ("v5.0" in x.name or "audio" not in ep), sorted(Path(morpho_store).iterdir(), key=lambda f: f.stat().st_mtime)))[-1].name
           #list(filter(lambda x: "morph-v3.0" in x, os.listdir(morpho_store)))[0]
           input_file = "%s/%s/%s.txt" % (morpho_store, morpho_ver, filename)
           with open(input_name, "w") as w:
@@ -191,10 +192,10 @@ def get_input_paths(folder, qResults, language):
       paths.append((p,p))
   return paths
 
-def get_summarizer(args, language, translate_query):
+def get_summarizer(args, language, stopwords, translate_query):
       
       embds_path = "%s/%s" % (args.embds_dir,("en_%s_embds.txt"%language))
-      weights_path = "%s/%s" % (args.embds_dir,("en_%s_freqs.txt"%language))
+      weights_path = "%s/%s" % (args.embds_dir,("en_%s_freq.txt"%language))
 
       # initialize the sif embeddings stuff
       (words, We) = em.data_io.getWordmap(embds_path)
@@ -207,30 +208,29 @@ def get_summarizer(args, language, translate_query):
 
       predictor = SimilarityExtractor(use_text_cosine=args.text_similarity, use_embd_cosine=args.embd_similarity,
               embd_dim=embd_dim)
-      return Summarizer(sif_model=sif_model, predictor=predictor, storwords=stopwords, translate_query=translate_query, language=language)
+      return Summarizer(sif_model=sif_model, predictor=predictor, stopwords=stopwords, translate_query=translate_query, language=language)
 
 def load_summarizers(args):
 
     # stopwords
     stopwords = load_stopwords(args.stopwords)
-
     summarizers = []
 
     for sum_typ in args.configuration.split("|"):
 
       if sum_typ == "en":
-        summarizer = get_summarizer(args, "en", False)
+        summarizer = get_summarizer(args, "en", stopwords, False)
         summarizers.append({"tl":summarizer,"sw":summarizer})
       if sum_typ == "cross":
-        tl_summarizer = get_summarizer(args, "tl", False)
-        sw_summarizer = get_summarizer(args, "sw", False)
+        tl_summarizer = get_summarizer(args, "tl", stopwords, False)
+        sw_summarizer = get_summarizer(args, "sw", stopwords, False)
         summarizers.append({"tl":tl_summarizer,"sw":sw_summarizer})
       if sum_typ == "src":
-        tl_summarizer = get_summarizer(args, "tl", True)
-        sw_summarizer = get_summarizer(args, "sw", True)
+        tl_summarizer = get_summarizer(args, "tl", stopwords, True)
+        sw_summarizer = get_summarizer(args, "sw", stopwords, True)
         summarizers.append({"tl":tl_summarizer,"sw":sw_summarizer})
 
-  return summarizers
+    return summarizers
 
 def order_sens(summary, indices):
   sens = summary.split("\n")
@@ -290,6 +290,8 @@ def main():
 
     summarizers = load_summarizers(args)
 
+    print("Loaded server on port %s, with %d summarizers" % (args.port, len(summarizers)))
+
     # start the server and listen to summarization requests
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serversocket.bind(("", args.port))
@@ -306,7 +308,8 @@ def main():
       query_path = os.path.join(args.query_folder,qExpansion)
       os.system("mkdir -p %s" % summary_dir)
 
-      input_paths = list(map(lambda s: get_input_paths(args.folder, args.results + "/" + qResults, s.language),
+      # get inputs, no matter which summarizer to use to the langugage of the summarizer
+      input_paths = list(map(lambda s: get_input_paths(args.folder, args.results + "/" + qResults, s["tl"].language),
                          summarizers))
       try:
         # go over all the input files and run summarization for all summarizers
@@ -318,11 +321,11 @@ def main():
             sens_in_order = None
             for s in range(len(summarizers)):
               if DEBUG: print("DEBUG: working on %s and %s" % (input_paths[s][i][0], input_paths[s][i][1]))
-              summary, indices = summarizers[s].summarize_text(input_paths[s][i][0], input_paths[s][i][1],
+              key = "sw" if "1A/" in input_paths[s][i][1] else "tl"
+              summary, indices = summarizers[s][key].summarize_text(input_paths[s][i][0], input_paths[s][i][1],
                                query=query_path, portion=args.portion, max_length=sys.maxsize, rescore=False)
               if not sens_in_order: sens_in_order = order_sens(summary, indices)
               rankings.append(np.argsort(indices))
-              summaries.append(summary)
             final_indices = np.argsort(borda_count_rank_merge(rankings))
             for idx in final_indices:
               if length >= args.length: break
@@ -338,7 +341,7 @@ def main():
             output_path = os.path.join(temp_out, os.path.basename(input_paths[0][i][1]))
             with open(output_path, "w", encoding="utf-8") as fp: fp.write(final_summary)
           except: traceback.print_exc()
-        if args.gen_image: summarizers[0].sum2img(temp_out, query_path, args.highlight)
+        if args.gen_image: summarizers[0]["tl"].sum2img(temp_out, query_path, args.highlight)
         os.system("mv %s/* %s/ 2> /dev/null" % (temp_out,summary_dir))
         os.system("chmod -R 777 %s" % summary_dir)
       except: traceback.print_exc()
