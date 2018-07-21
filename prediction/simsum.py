@@ -105,7 +105,7 @@ class Summarizer(object):
     '''
     def split2sens(self, raw_text_path):
         out_file_name = tempfile.NamedTemporaryFile().name
-        with open(out_file_name,"w") as w:
+        with open(out_file_name,"w",encoding="utf-8") as w:
           for line in fileaslist(raw_text_path):
             line = line.strip()
             if len(line) > 0: w.write(line + "\n")
@@ -175,7 +175,7 @@ def get_input_paths(folder, qResults, language):
           morpho_ver = list(filter(lambda x: "morph-v3.0" in x.name and ("v5.0" in x.name or "audio" not in ep), sorted(Path(morpho_store).iterdir(), key=lambda f: f.stat().st_mtime)))[-1].name
           #list(filter(lambda x: "morph-v3.0" in x, os.listdir(morpho_store)))[0]
           input_file = "%s/%s/%s.txt" % (morpho_store, morpho_ver, filename)
-          with open(input_name, "w") as w:
+          with open(input_name, "w",encoding="utf-8") as w:
            with open(input_file,encoding="utf-8") as r:
             for line in r:
               d = json.loads(line)
