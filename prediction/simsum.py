@@ -10,8 +10,10 @@ sys.path.append("../splitta")
 sys.path.append("../SIF/examples")
 sys.path.append("../SIF/src")
 sys.path.append("../training")
+sys.path.append("../lda")
 import extract_embeddings as em
 import sbd
+import lda
 from utils import fileaslist, write2file
 import word_tokenize as wt
 from predict import get_inputs_metadata
@@ -115,12 +117,11 @@ class Summarizer(object):
       out_file_name = tempfile.NamedTemporaryFile().name
       write2file("\n".join([wt.normalize(line) for line in fileaslist(sens_path)]), out_file_name)
       return out_file_name
-   
+  
     def get_query_embd(self, query_path):
-      # extract the query from the query_path
-      with open(query_path,encoding="utf-8") as qr:
-        query_dict = json.load(qr)
-      query = query_dict["parsed_query"][0]["content"] if not self.translate_query else get_translated_query(query_dict) 
+      
+      query = get_query(query_path, self.translate_query)
+      
       # deal with query
       qin_f = tempfile.NamedTemporaryFile()
       write2file(wt.normalize(query), qin_f.name)
@@ -151,6 +152,13 @@ class Summarizer(object):
         clean_texts = fileaslist(sens_text_path2)
         sent_tokens = [sen.split(" ") for sen in fileaslist(norm_text_path)]
         return get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, query=query)
+
+def get_query(query_path, translate_query):
+      # extract the query from the query_path
+      with open(query_path,encoding="utf-8") as qr:
+        query_dict = json.load(qr)
+      query = query_dict["parsed_query"][0]["content"] if not translate_query else get_translated_query(query_dict)
+      return query
 
 # decides how to get the input texts
 def get_input_paths(folder, qResults, language):
@@ -239,6 +247,20 @@ def order_sens(summary, indices):
     in_order[j] = sens[i]
   return in_order
 
+def get_additional_content(source_path, query_path):
+  if TOPIC:
+    query = get_query(query_path, translate_query=False)
+    topics,queries = lda.get_topics(TOPIC, fileaslist(source_path), query, 5)
+    queries = list(map(lambda x: " ".join(x), queries))
+    if DEBUG: print("topics: %s, queries: %s" % (topics,queries))
+    if len(topics) == 0: return "",0
+    assert(len(topics)==len(queries))
+    content = "; ".join(list(map(lambda x: "%s: %s" % (x[0],", ".join(list(map(lambda y: y[0], x[1])))), zip(queries, topics))))
+  else:
+    return "",0
+
+  return content, len(content.split(" "))
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -275,6 +297,8 @@ def main():
     parser.add_argument(
         "--configuration", required=False, type=str, default="en|cross|src")
     parser.add_argument(
+        "--topic-model-path", required=False, type=str, default="")
+    parser.add_argument(
         "--debug", required=False, type=str, default="False")
     args = parser.parse_args()
     
@@ -288,9 +312,15 @@ def main():
     if not os.path.exists(args.summary_dir):
         os.makedirs(args.summary_dir)
 
+    global TOPIC
+    if os.path.exists(args.topic_model_path):
+      TOPIC=lda.load_topic_model(args.topic_model_path)
+    else:
+      TOPIC=None
+
     summarizers = load_summarizers(args)
 
-    print("Loaded server on port %s, with %d summarizers" % (args.port, len(summarizers)))
+    print("Loaded server on port %s, with %d summarizers and topic model: %s" % (args.port, len(summarizers), TOPIC))
 
     # start the server and listen to summarization requests
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -315,6 +345,8 @@ def main():
         # go over all the input files and run summarization for all summarizers
         for i in range(len(input_paths[0])):
           try:
+            # topic model content
+            add_content, add_size = get_additional_content(input_paths[0][i][1], query_path=query_path)
             length = 0
             final_summary_sens = []
             rankings = []
@@ -326,18 +358,19 @@ def main():
                                query=query_path, portion=args.portion, max_length=sys.maxsize, rescore=False)
               if not sens_in_order: sens_in_order = order_sens(summary, indices)
               rankings.append(np.argsort(indices))
+            max_length = args.length - add_size
             final_indices = np.argsort(borda_count_rank_merge(rankings))
             for idx in final_indices:
-              if length >= args.length: break
+              if length >= max_length: break
               candidate = sens_in_order[idx]
               words = candidate.split(" ")
-              if length + len(words) <= args.length:
+              if length + len(words) <= max_length:
                 final_summary_sens.append(candidate)
                 length += len(words)
               else:
-                final_summary_sens.append(" ".join(words[:args.length-length]))
-                length = args.length
-            final_summary = "\n".join(final_summary_sens)
+                final_summary_sens.append(" ".join(words[:max_length-length]))
+                length = max_length
+            final_summary = "\n".join(final_summary_sens) if not add_content else "\n".join([add_content] + final_summary_sens)
             output_path = os.path.join(temp_out, os.path.basename(input_paths[0][i][1]))
             with open(output_path, "w", encoding="utf-8") as fp: fp.write(final_summary)
           except: traceback.print_exc()
