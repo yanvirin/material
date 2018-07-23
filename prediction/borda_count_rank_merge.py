@@ -27,7 +27,7 @@ def borda_count_rank_merge(rankings):
     """
 
     # trivial case
-    if len(rankings) == 1: return rankings
+    if len(rankings) == 1: return rankings[0]
 
     all_points = [0 for _ in rankings[0]]
     max_rank = len(rankings[0]) - 1
