@@ -161,7 +161,7 @@ def get_query(query_path, translate_query):
       return query
 
 # decides how to get the input texts
-def get_input_paths(folder, qResults, language):
+def get_input_paths(folder, qResults, is_en):
   paths = []
   if os.path.isfile(qResults):
     with open(qResults,encoding="utf-8") as r:
@@ -171,17 +171,15 @@ def get_input_paths(folder, qResults, language):
         index_toks = index.replace("index_store","mt_store").split("/")
         filename = res["filename"]
         ep = "%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2], filename)
-        if language == "en":
+        if is_en:
           paths.append((ep,ep))
         else:
           # check that the correct laguage was selected in the server
-          assert(language=="sw" and "1A/" in index or language=="tl" and "1B/" in index)
           input_name = tempfile.NamedTemporaryFile().name
           index_toks = index.replace("index_store","morphology_store").split("/")
           morpho_store = "%s/%s" % (folder, "/".join(index_toks[:5]))
           if DEBUG: print("looking in morpho store: %s" % morpho_store)
           morpho_ver = list(filter(lambda x: "morph-v3.0" in x.name and ("v5.0" in x.name or "audio" not in ep), sorted(Path(morpho_store).iterdir(), key=lambda f: f.stat().st_mtime)))[-1].name
-          #list(filter(lambda x: "morph-v3.0" in x, os.listdir(morpho_store)))[0]
           input_file = "%s/%s/%s.txt" % (morpho_store, morpho_ver, filename)
           with open(input_name, "w",encoding="utf-8") as w:
            with open(input_file,encoding="utf-8") as r:
@@ -339,7 +337,7 @@ def main():
       os.system("mkdir -p %s" % summary_dir)
 
       # get inputs, no matter which summarizer to use to the langugage of the summarizer
-      input_paths = list(map(lambda s: get_input_paths(args.folder, args.results + "/" + qResults, s["tl"].language),
+      input_paths = list(map(lambda s: get_input_paths(args.folder, args.results + "/" + qResults, s["tl"].language == "en"),
                          summarizers))
       try:
         # go over all the input files and run summarization for all summarizers
