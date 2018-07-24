@@ -6,6 +6,8 @@ def resolve_query_set(paths):
         if path.endswith(".tsv"):
             query_sets.append(os.path.basename(os.path.split(path)[0]))
         else:
+            if path[-1] == "/":
+                path = path[:-1]
             query_sets.append(os.path.basename(path))
     query_sets.sort()
     query_set = "".join(query_sets)
@@ -20,6 +22,7 @@ def resolve_query_set(paths):
 
 
 def resolve_datasets(paths):
+    paths = [path[:-1] if path[-1] == "/" else path for path in paths]
     datasets = [os.path.basename(path) for path in paths]
     if not len(datasets) in [1, 2, 3]: 
         raise Exception("Bad dataset argument.")
