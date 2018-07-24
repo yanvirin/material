@@ -41,12 +41,14 @@ data = defaultdict(list)
 
 # write all the data to the files and rename images and summaries
 # to fit the correct format
+temp_dir = tempfile.mkdtemp()
 for q_f in os.listdir(args.summary_dir):
   qid = q_f
+  os.system("mkdir -p %s/%s" % (temp_dir,q_f))
   res_f = "q-%s.json" % qid
   with open("%s/%s" % (args.query_folder,qid)) as qr: qdict = json.load(qr)
   with open("%s/%s" % (args.results_folder,res_f)) as rr: rdict = json.load(rr)
-  with open("%s/%s/s-%s.tsv" % (args.summary_dir,qid,qid),"w") as qw:
+  with open("%s/%s/s-%s.tsv" % (temp_dir,qid,qid),"w") as qw:
     # record the query name and domain
     query_str = "%s:%s" % (qdict["domain"]["desc"],qdict["IARPA_query"])
     qw.write("%s\t%s\n" % (qid,query_str))
@@ -57,9 +59,9 @@ for q_f in os.listdir(args.summary_dir):
       sum_id = str(uuid.uuid4())
       file_id = "SCRIPTS.%s.%s.%s" % (SYSTEM_NAME,qid,doc_id)
       qw.write("%s\t%f\t%s.json\n" % (doc_id,float(relevance),file_id))
-      with open("%s/%s/%s.json" % (args.summary_dir,qid,file_id),"w") as rw:
-        os.system("mv %s/%s/%s.png %s/%s/%s.png" % (args.summary_dir,qid,doc_id,args.summary_dir,qid,file_id))
-        os.system("mv %s/%s/%s.txt %s/%s/%s.txt" % (args.summary_dir,qid,doc_id,args.summary_dir,qid,file_id))
+      with open("%s/%s/%s.json" % (temp_dir,qid,file_id),"w") as rw:
+        os.system("cp %s/%s/%s.png %s/%s/%s.png" % (args.summary_dir,qid,doc_id,temp_dir,qid,file_id))
+        os.system("cp %s/%s/%s.txt %s/%s/%s.txt" % (args.summary_dir,qid,doc_id,temp_dir,qid,file_id))
         with open("%s/%s/%s.txt" % (args.summary_dir,qid,file_id)) as sf:
           word_list = [line.strip().split(" ") for line in sf.readlines()]
           word_list = [item for sublist in word_list for item in sublist]
@@ -78,15 +80,16 @@ for q_f in os.listdir(args.summary_dir):
         json.dump(d,rw)
         rw.write("\n")
 
-os.system("chmod 777 -R %s" % args.summary_dir)
+os.system("chmod 777 -R %s" % temp_dir)
 # pacakge the stuff
 package_path = "%s/summary-package.tgz" % args.package_dir
 output_folder = tempfile.mkdtemp()
 for q_f in os.listdir(args.summary_dir):
-  os.system("tar -czvf %s/%s.tgz -C %s %s" % (output_folder,q_f,args.summary_dir,q_f))
+  os.system("tar -czvf %s/%s.tgz -C %s %s" % (output_folder,q_f,temp_dir,q_f))
 os.system("chmod 777 -R %s" % output_folder)
 os.system("tar -czvf %s -C %s ." % (package_path,output_folder))
 os.system("rm -rf %s" % output_folder)
+os.system("rm -rf %s" % temp_dir)
 
 #rename
 with open(args.exp_path) as expr: pipeline_data = json.load(expr)
