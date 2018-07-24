@@ -27,7 +27,6 @@ def get_inputs_metadata(sent_tokens, clean_texts, sen_embds, qry_embds, query=""
   if len(sen_embds) == 0: return None, None
 
   sen_embds = torch.FloatTensor(sen_embds)
-  print("DEBUG: sen embds len: %s" % len(sen_embds))
   qry_embds = torch.FloatTensor([qry_embds]).repeat(len(sen_embds),1)
   embeddings = torch.cat([sen_embds, qry_embds], 1) 
   word_counts = torch.LongTensor([[len(tokens) for tokens in sent_tokens]])
