@@ -5,7 +5,21 @@ from submission_namer import rename_submission
 
 renaming_script_path = "./material_create_submission_filename-v0.1.3.py"
 SYSTEM_NAME = "system1"
-INSTRUCTIONS = "Try to figure out if the output is relevant"
+
+GEN_INSTR = """
+-- Every summary consists of a paragraph of text.
+-- The summary may be written in poor English; this does not necessarily mean it is not relevant.
+-- Green highlighting indicates our (possibly incorrect) belief about the relevance of the word to the query.
+-- Green indicates very relevant while white indicates less relevant.
+-- It is possible that some relevant words are not highlighted.
+-- At the top of the summary we will show some words from the document that are topically related to each query term.
+-- They may help illustrate the context in which the query occurs in the document.
+"""
+
+INSTRUCTIONS = {
+    "component_1": GEN_INSTR,
+    "component_2": GEN_INSTR,
+    "domain": ""}
 
 now = datetime.datetime.now().isoformat().split(".")[0] + "Z"
 

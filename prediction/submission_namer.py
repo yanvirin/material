@@ -48,9 +48,9 @@ def resolve_datasets(paths):
 def rename_submission(pipeline_data, tar_path, output_dir, 
                       rename_script_location):
 
-    if pipeline_data["domain_modeling"]["target_language"] == "sw":
+    if pipeline_data["query_processor"]["target_language"] == "sw":
         lang = "1A"
-    elif pipeline_data["domain_modeling"]["target_language"] == "tl":
+    elif pipeline_data["query_processor"]["target_language"] == "tl":
         lang = "1B"
     else:
         raise Exception(
