@@ -62,7 +62,7 @@ for q_f in os.listdir(args.summary_dir):
       with open("%s/%s/%s.json" % (temp_dir,qid,file_id),"w") as rw:
         os.system("cp %s/%s/%s.png %s/%s/%s.png" % (args.summary_dir,qid,doc_id,temp_dir,qid,file_id))
         os.system("cp %s/%s/%s.txt %s/%s/%s.txt" % (args.summary_dir,qid,doc_id,temp_dir,qid,file_id))
-        with open("%s/%s/%s.txt" % (args.summary_dir,qid,file_id)) as sf:
+        with open("%s/%s/%s.txt" % (temp_dir,qid,file_id)) as sf:
           word_list = [line.strip().split(" ") for line in sf.readlines()]
           word_list = [item for sublist in word_list for item in sublist]
           assert(len(word_list) <= 100)
