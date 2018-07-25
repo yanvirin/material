@@ -8,6 +8,7 @@ from os import listdir
 import os.path
 import string
 import sys
+import re
 
 import gensim
 
@@ -97,11 +98,12 @@ def preprocess2(doc):
         stemmed_sent = []
         
         for word in sent:
+            word = word.lower()
             #try:
             #    word = word.encode('ascii', errors='ignore')
             #except UnicodeDecodeError:
             #    continue
-            if word.lower() in STOPWORDS or is_punctuation(word):
+            if word in STOPWORDS or is_punctuation(word):
                 continue
             
             stem = stemmer.stem(word)
@@ -117,6 +119,7 @@ def preprocess2(doc):
 
 
 def clean_query_helper(query):
+    query = re.sub(r"\[(hyp|evf|syn):(.*?)\]", r" \2 ", query)
     index = query.find('[')
     if index > 0:
         query = query[:index]
@@ -124,11 +127,12 @@ def clean_query_helper(query):
         query = query.replace('<', '').replace('>', '')
     if '"' in query:
         query = query.replace('"', '')
-    if query.endswith('+'):
-        query = query[:-1]
-    if query.startswith('EXAMPLE_OF'):
-        query = query[11:-1]
-    return list(set([word for word in query.split() if not word.lower() in STOPWORDS]))
+
+    query = query.replace("+", " ")
+    query = re.sub(r"EXAMPLE_OF\((.*?)\)", r"\1", query)
+
+    return [word.lower() for word in query.split() 
+            if not word.lower() in STOPWORDS]
 
 def clean_query(query):
     query = query.split(',')
@@ -192,7 +196,8 @@ def get_topics(model, doc, query, max_output_words):
 
         topic_words = topic_words.items()
         if len(topic_words) == 0:
-            continue
+            all_topic_words.append([])
+            continue 
             
         topic_words = sorted(topic_words, key=itemgetter(1), reverse=True)
         if len(topic_words) > max_output_words:
