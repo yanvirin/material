@@ -50,7 +50,7 @@ for q_f in os.listdir(args.summary_dir):
   with open("%s/%s" % (args.results_folder,res_f)) as rr: rdict = json.load(rr)
   with open("%s/%s/s-%s.tsv" % (temp_dir,qid,qid),"w") as qw:
     # record the query name and domain
-    query_str = "%s:%s" % (qdict["domain"]["desc"],qdict["IARPA_query"])
+    query_str = "%s:%s" % (qdict["IARPA_query"],qdict["domain"]["desc"])
     qw.write("%s\t%s\n" % (qid,query_str))
     # go over all results and record the needed data
     for res in rdict["document info"]["results"]:
