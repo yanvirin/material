@@ -32,31 +32,13 @@ def get_topic_model(doc_dir):
     dictionary = gensim.corpora.Dictionary(docs)
     dictionary.filter_extremes()
     corpus = [dictionary.doc2bow(doc) for doc in docs]    
-    #return train_topic_model(docs, dictionary, corpus)
-    return gensim.models.ldamodel.LdaModel(corpus, num_topics=100, id2word=dictionary)
-
-
-def train_topic_model(texts, dictionary, corpus, start=1000, stop=50000, step=1000):
-    models, coherences = [], []
-    for k in xrange(start, stop, step):
-        model = gensim.models.ldamodel.LdaModel(corpus, num_topics=k, id2word=dictionary)
-        models.append(model)
-        coherence = gensim.models.coherencemodel.CoherenceModel(model, texts=texts, corpus=corpus)
-        coherences.append(coherence.get_coherence())
-
-    for i in xrange(len(coherences)-1):
-        if coherences[i+1] - coherences[i] <= 0:
-            #print('k = %d' % i)
-            return models[i]
-    return models[-1]
-
+    return gensim.models.ldamodel.LdaModel(corpus, num_topics=10000, id2word=dictionary)
 
 def save_topic_model(model, filename):
     model.save(filename)
 def load_topic_model(filename):
     return gensim.models.ldamodel.LdaModel.load(filename)
 
-        
 def is_punctuation(word):
     for char in word:
         if not char in string.punctuation:
@@ -76,11 +58,12 @@ def preprocess1(doc):
         stemmed_sent = []
         
         for word in sent:
-            try:
-                word = word.encode('ascii', errors='ignore')
-            except UnicodeDecodeError:
-                continue
-            if word.lower() in STOPWORDS or is_punctuation(word):
+            word = word.lower()
+            #try:
+            #    word = word.encode('ascii', errors='ignore')
+            #except UnicodeDecodeError:
+            #    continue
+            if word in STOPWORDS or is_punctuation(word):
                 continue
             
             stem = stemmer.stem(word)
@@ -138,73 +121,69 @@ def clean_query(query):
     query = query.split(',')
     return [clean_query_helper(subquery) for subquery in query]
 
+def get_topics_helper(model, query, dictionary, doc, unstemmer, max_output_words):
+    output_words = []            
+    doc_topics = sorted(model.get_document_topics(dictionary.doc2bow(doc)), key=itemgetter(1), reverse=True)
+    topic = None
 
-def get_topics_helper(model, query, dictionary, doc, unstemmer, term, max_output_words):
     stemmer = PorterStemmer()    
-    query = stemmer.stem(query)    
+    query = stemmer.stem(query)
     if not query in dictionary.token2id:
-        return None
+        topic = doc_topics[0]
 
-    query_id = dictionary.token2id[query]
-    term_topics = dict(model.get_term_topics(query_id))    
-    doc_topics = dict(model.get_document_topics(dictionary.doc2bow(doc)))
+    else:
+        query_id = dictionary.token2id[query]        
+        topics = []
+        for topic_id, topic_prob in doc_topics:
+            topic_terms = dict([pair for pair in model.get_topic_terms(topic_id, topn=1000)])
+            if query_id in topic_terms:
+                topics.append((topic_id, topic_terms[query_id]))
+
+        if len(topics) == 0:
+            topic = doc_topics[0]
+        else:
+            topics = sorted(topics, key=itemgetter(1), reverse=True)
+            topic = topics[0]
     
-    topics = [(topic, doc_topics[topic] * term_topics[topic]) for topic in doc_topics if topic in term_topics]
-    topics = sorted(topics, key=itemgetter(1), reverse=True)    
-
-    output_words = []
     output_counter = 0
-    for topic in topics:
-        topic_words = model.get_topic_terms(topic[0], topn=100)
-        
-        for word_id, word_prob in topic_words:
-            word = dictionary.id2token[word_id]
-            
-            if word in unstemmer:
-                output_counter += 1
-                word = sorted(unstemmer[word].items(), key=itemgetter(1), reverse=True)[0][0]
-                output_words.append((word, word_prob))
-                
+    for word_id, word_prob in model.get_topic_terms(topic[0], topn=1000):
+        if word_prob < 0.001:
+            break
+
+        word = dictionary.id2token[word_id]
+        if word in unstemmer:
+            output_counter += 1
+            word = sorted(unstemmer[word].items(), key=itemgetter(1), reverse=True)[0][0]
+            output_words.append((word, word_prob))
+
             if output_counter == max_output_words:
                 break
-        if output_counter == max_output_words:
-            break
-        
-    if output_counter == 0:
-        return None
     return output_words
-    
+
+
 def get_topics(model, doc, query, max_output_words):
     doc, unstemmer = preprocess2(doc)
-
     dictionary = model.id2word
-
     queries = clean_query(query)
     
     all_topic_words = []
     for query in queries:
         topic_words = {}
         for term in query:
-            topic = get_topics_helper(model, term, dictionary, doc, unstemmer, term, max_output_words)
-            if not topic:
-                continue
-
+            topic = get_topics_helper(model, term, dictionary, doc, unstemmer, max_output_words)
             for word, prob in topic:
                 if (not word in topic_words
                             or (word in topic_words and topic_words[word] < prob)):
                     topic_words[word] = prob                    
 
         topic_words = topic_words.items()
-        if len(topic_words) == 0:
-            all_topic_words.append([])
-            continue 
-            
-        topic_words = sorted(topic_words, key=itemgetter(1), reverse=True)
-        if len(topic_words) > max_output_words:
-            topic_words = topic_words[:max_output_words]
-            
+        if len(topic_words) > 0:
+            topic_words = sorted(topic_words, key=itemgetter(1), reverse=True)
+            if len(topic_words) > max_output_words:
+                topic_words = topic_words[:max_output_words]
+                
         all_topic_words.append(topic_words)
-    return all_topic_words,queries
+    return all_topic_words, queries
 
 
 def main(args):
