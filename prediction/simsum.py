@@ -21,6 +21,10 @@ import word_tokenize as wt
 from predict import get_inputs_metadata
 from similarity_extractor import SimilarityExtractor
 from borda_count_rank_merge import borda_count_rank_merge
+from sklearn.metrics.pairwise import cosine_similarity
+from nltk import word_tokenize
+
+
 
 SUMMARIZATION_TRIGGER = "7XXASDHHCESADDFSGHHSD"
 
@@ -261,13 +265,6 @@ def get_additional_content(source_path, query_path):
   else:
     return None, 0
 
-
-
-from sklearn.metrics.pairwise import cosine_similarity
-from nltk import word_tokenize
-
-
-
 def calculate_highlight_weights(query_data, summary_sentences, emb_dict, 
                                 stopwords):
 
@@ -468,9 +465,10 @@ def main():
                 print("\n\n")
 
             if args.highlight:
-
+                                   
                 if len(morph_constraints):
-                    with open(input_paths[s][i][1], "r") as fp:
+                    en_doc_path = input_paths[s][i][1]
+                    with open(en_doc_path, "r", encoding="utf8") as fp:
                         en_text = fp.read()
                     matches = [re.search(re.escape(mc), en_text, flags=re.I)
                                for mc in morph_constraints]
