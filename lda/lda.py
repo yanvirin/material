@@ -9,6 +9,7 @@ import os.path
 import string
 import sys
 import re
+import numpy as np
 
 import gensim
 
@@ -16,8 +17,10 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+from collections import defaultdict
 
-STOPWORDS = stopwords.words('english')        
+STOPWORDS = set(stopwords.words('english'))
+STOPWORDS.add("n't")
 
 def get_topic_model(doc_dir):
     docs = []
@@ -121,70 +124,76 @@ def clean_query(query):
     query = query.split(',')
     return [clean_query_helper(subquery) for subquery in query]
 
-def get_topics_helper(model, query, dictionary, doc, unstemmer, max_output_words):
-    output_words = []            
-    doc_topics = sorted(model.get_document_topics(dictionary.doc2bow(doc)), key=itemgetter(1), reverse=True)
-    topic = None
-
+def get_topics_helper(doc_topics, topic_term_matrix, query, dictionary, 
+                      unstemmer, max_output_words):
     stemmer = PorterStemmer()    
     query = stemmer.stem(query)
     if not query in dictionary.token2id:
-        topic = doc_topics[0]
+        return [], query in unstemmer
+    query_idx = dictionary.token2id[query] 
+        
+    topic_scores = [np.log(tpc_prob) + \
+                        np.log(topic_term_matrix[tpc_idx, query_idx])
+                    for tpc_idx, tpc_prob in doc_topics]
+    stems_ids = [(stem, dictionary.token2id[stem]) 
+                  for stem in unstemmer.keys()
+                  if stem in dictionary.token2id]
+    stems_ids.sort(key=lambda x: x[1])
+   
+    stems_scores = np.array([float("-inf")] * len(stems_ids))
 
-    else:
-        query_id = dictionary.token2id[query]        
-        topics = []
-        for topic_id, topic_prob in doc_topics:
-            topic_terms = dict([pair for pair in model.get_topic_terms(topic_id, topn=1000)])
-            if query_id in topic_terms:
-                topics.append((topic_id, topic_terms[query_id]))
+    for t, topic_lp in enumerate(topic_scores):
+        topic_idx = doc_topics[t][0]
+        stem_lps = np.log(
+            topic_term_matrix[topic_idx][[x[1] for x in stems_ids]])
+        stem_lps += topic_lp    
+        stems_scores = np.maximum(stems_scores, stem_lps)
 
-        if len(topics) == 0:
-            topic = doc_topics[0]
-        else:
-            topics = sorted(topics, key=itemgetter(1), reverse=True)
-            topic = topics[0]
-    
-    output_counter = 0
-    for word_id, word_prob in model.get_topic_terms(topic[0], topn=1000):
-        if word_prob < 0.001:
-            break
-
-        word = dictionary.id2token[word_id]
-        if word in unstemmer:
-            output_counter += 1
-            word = sorted(unstemmer[word].items(), key=itemgetter(1), reverse=True)[0][0]
-            output_words.append((word, word_prob))
-
-            if output_counter == max_output_words:
-                break
-    return output_words
-
+    topic_stems = [(stems_ids[s][0], stems_scores[s])
+                   for s in np.argsort(stems_scores)[-max_output_words:]]
+    return topic_stems, query in unstemmer
 
 def get_topics(model, doc, query, max_output_words):
     doc, unstemmer = preprocess2(doc)
     dictionary = model.id2word
     queries = clean_query(query)
-    
-    all_topic_words = []
+
+    doc_topics = model.get_document_topics(dictionary.doc2bow(doc))
+    topic_term_matrix = model.get_topics()
+
+    word_count = 0
+    query_results = []
     for query in queries:
-        topic_words = {}
+        query_result = {"query": [], "query_highlight": [],
+                        "topic_words": []}
+        topic_word_scores = defaultdict(lambda: float("-inf"))
         for term in query:
-            topic = get_topics_helper(model, term, dictionary, doc, unstemmer, max_output_words)
-            for word, prob in topic:
-                if (not word in topic_words
-                            or (word in topic_words and topic_words[word] < prob)):
-                    topic_words[word] = prob                    
+            
+            topic_words, highlight = get_topics_helper(
+                doc_topics, topic_term_matrix, term, dictionary, 
+                unstemmer, max_output_words)
+            for stem, score in topic_words:
+                if score > topic_word_scores[stem]:
+                    topic_word_scores[stem] = score
+            query_result["query_highlight"].append(highlight)
 
-        topic_words = topic_words.items()
-        if len(topic_words) > 0:
-            topic_words = sorted(topic_words, key=itemgetter(1), reverse=True)
-            if len(topic_words) > max_output_words:
-                topic_words = topic_words[:max_output_words]
-                
-        all_topic_words.append(topic_words)
-    return all_topic_words, queries
+        topic_word_scores = sorted(
+            topic_word_scores.items(), 
+            key=itemgetter(1), 
+            reverse=True)
+        topic_word_scores = topic_word_scores[:max_output_words]
 
+        topic_words = []
+        for stem, scores in topic_word_scores:
+            word = sorted(
+                unstemmer[stem].items(), key=itemgetter(1), reverse=True)[0][0]
+            topic_words.append(word)
+        query_result["topic_words"] = topic_words
+        query_result["query"] = query
+        query_results.append(query_result)
+        word_count += len(topic_words) + len(query)
+
+    return query_results, word_count
 
 def main(args):
     #doc_dir = args[0]
