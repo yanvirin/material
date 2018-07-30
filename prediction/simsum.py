@@ -419,7 +419,7 @@ def main():
 
 
       try:
-        with open(query_path, "r") as query_fp:
+        with open(query_path, "r", encoding='utf-8') as query_fp:
             query_data = json.load(query_fp)
 
         morph_constraints = []
