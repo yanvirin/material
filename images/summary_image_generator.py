@@ -5,6 +5,7 @@ COLOR_WHITE = ImageColor.getrgb("white")
 COLOR_YELLOW = ImageColor.getrgb("yellow")
 COLOR_ORANGE = ImageColor.getrgb("orange")
 COLOR_GREEN = ImageColor.getrgb("green")
+COLOR_PURPLE = ImageColor.getrgb("purple")
 
 def wrap_line(line, max_width, font, highlight_weights=None):
     line = list(line)
@@ -77,8 +78,7 @@ def draw_wrapped_lines(wrapped_lines, draw, font, y_pos, wrapped_weights=None,
         x_pos = 25
         for t, token in enumerate(line):
             draw.text((x_pos, y_pos), token, font=font, fill=font_color)
-            if wrapped_weights:
-
+            if wrapped_weights and wrapped_weights[l][t] > 0.:
                 alpha = int(255 * wrapped_weights[l][t])
                 draw.text((x_pos, y_pos), token, font=font, 
                           fill=(*highlight_color, alpha))
@@ -88,10 +88,10 @@ def draw_wrapped_lines(wrapped_lines, draw, font, y_pos, wrapped_weights=None,
 
      
 def generate_image(path, summary_lines, topics=None, highlight_weights=None, 
-                   width=600, height=405, 
+                   width=600, height=600, 
                    font_color=COLOR_WHITE, background_color=COLOR_BLACK,
-                   query_highlight_color=COLOR_ORANGE, 
-                   query_color=COLOR_YELLOW,
+                   query_highlight_color=COLOR_GREEN, 
+                   query_color=COLOR_PURPLE,
                    highlight_color=COLOR_GREEN):
 
     image = Image.new('RGBA', (width, height), background_color)
@@ -106,7 +106,10 @@ def generate_image(path, summary_lines, topics=None, highlight_weights=None,
 
     if topics:
         for topic in topics:
-            draw_topic(topic, draw, font, y_pos)
+            draw_topic(
+                topic, draw, font, y_pos,
+                query_color=query_color,
+                query_highlight_color=query_highlight_color)
             y_pos += font_height
         y_pos += 20
         draw.line([(0, y_pos), (width, y_pos)], fill=font_color)
