@@ -11,6 +11,8 @@ sys.path.append("../SIF/examples")
 sys.path.append("../SIF/src")
 sys.path.append("../training")
 sys.path.append("../lda")
+sys.path.append("../images")
+from summary_image_generator import generate_image
 import extract_embeddings as em
 import sbd
 import lda
@@ -248,16 +250,71 @@ def order_sens(summary, indices):
 def get_additional_content(source_path, query_path):
   if TOPIC:
     query = get_query(query_path, translate_query=False)
-    topics,queries = lda.get_topics(TOPIC, fileaslist(source_path), query, 5)
-    queries = list(map(lambda x: " ".join(x), queries))
-    if DEBUG: print("topics: %s, queries: %s" % (topics,queries))
-    if len(topics) == 0: return "",0
-    assert(len(topics)==len(queries))
-    content = "; ".join(list(map(lambda x: "%s: %s" % (x[0],", ".join(list(map(lambda y: y[0], x[1])))), zip(queries, topics))))
+    query_topics, word_count = lda.get_topics(
+        TOPIC, fileaslist(source_path), query, 5)
+    #queries = list(map(lambda x: " ".join(x), queries))
+    #if DEBUG: print("topics: %s, queries: %s" % (topics,queries))
+    #if len(topics) == 0: return "",0
+    #assert(len(topics)==len(queries))
+    #content = "; ".join(list(map(lambda x: "%s: %s" % (x[0],", ".join(list(map(lambda y: y[0], x[1])))), zip(queries, topics))))
+    return query_topics, word_count
   else:
-    return "",0
+    return None, 0
 
-  return content, len(content.split(" "))
+
+
+from sklearn.metrics.pairwise import cosine_similarity
+from nltk import word_tokenize
+
+
+
+def calculate_highlight_weights(query_data, summary_sentences, emb_dict, 
+                                stopwords):
+
+    normalized_summary_sents = [[w.lower() for w in word_tokenize(sent)] 
+                                for sent in summary_sentences]
+
+    normalized_summary_words = list(set([w 
+                                         for sent in normalized_summary_sents
+                                         for w in sent
+                                         if w not in stopwords]))
+    summary_word_embs = np.vstack(
+        [emb_dict[w] for w in normalized_summary_words])
+
+    query_words = query_data["parsed_query"][0]["info"]["words"].split()
+    query_words = [w.lower() for w in query_words]
+
+    query_embs = np.vstack([emb_dict[w] for w in query_words])
+
+    emb_sim = cosine_similarity(summary_word_embs, query_embs)
+    
+    query_thresholds = []
+    for q, query in enumerate(query_words):
+        thr = np.sort(emb_sim[:,q])[-3]
+        query_thresholds.append(thr)
+    query_thresholds = np.array(query_thresholds)
+    emb_sim[emb_sim <= query_thresholds] = 0.
+    word2emb_sim = {}
+    for word, emb_sim_row in zip(normalized_summary_words, emb_sim):
+        word2emb_sim[word] = np.max(emb_sim_row)
+
+    highlight_weights = []
+    for sent in normalized_summary_sents:
+        highlight_weights.append([word2emb_sim.get(w, 0.0) for w in sent])
+
+    return highlight_weights
+        
+
+class WordEmbeddingDict(object):
+    def __init__(self, word_to_index, embeddings):
+        self.word_to_index_ = word_to_index   
+        self.embeddings_ = embeddings 
+        self.missing_embedding_ = np.array([0.] * embeddings.shape[1])
+    def __getitem__(self, word):
+        if word in self.word_to_index_:
+            return self.embeddings_[self.word_to_index_[word]]
+        else:
+            return self.missing_embedding_
 
 def main():
     parser = argparse.ArgumentParser()
@@ -303,6 +360,7 @@ def main():
     args.text_similarity=args.text_similarity=="True"
     args.embd_similarity=args.embd_similarity=="True"
     args.gen_image=args.gen_image=="True"
+    args.highlight=args.highlight=="True"
 
     global DEBUG
     DEBUG=args.debug=="True"
@@ -316,12 +374,32 @@ def main():
     else:
       TOPIC=None
 
+#    summarizers = []
     summarizers = load_summarizers(args)
+
+    embds_path = "%s/%s" % (args.embds_dir, "en_en_embds.txt")
+#    weights_path = "%s/%s" % (args.embds_dir, "en_en_freq.txt")
+
+    # initialize the sif embeddings stuff
+    en_embeddings = WordEmbeddingDict(*em.data_io.getWordmap(embds_path))
+    en_stopwords = load_stopwords(args.stopwords)
+
+    #embd_dim = len(We[0])
+    #word2weight = em.data_io.getWordWeight(weights_path, 1e-3)
+    #weight4ind = em.data_io.getWeight(words, word2weight)
+    #embd_params = em.params.params()
+    #embd_params.rmpc = 0
+    #sif_model = (words, We, word2weight, weight4ind, embd_params)
+
+
+
+
 
     print("Loaded server on port %s, with %d summarizers and topic model: %s" % (args.port, len(summarizers), TOPIC))
 
     # start the server and listen to summarization requests
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serversocket.bind(("", args.port))
     serversocket.listen(5)
 
@@ -337,14 +415,23 @@ def main():
       os.system("mkdir -p %s" % summary_dir)
 
       # get inputs, no matter which summarizer to use to the langugage of the summarizer
-      input_paths = list(map(lambda s: get_input_paths(args.folder, args.results + "/" + qResults, s["tl"].language == "en"),
-                         summarizers))
+      input_paths = list(map(lambda s: get_input_paths(args.folder, args.results + "/" + qResults, s["tl"].language == "en"), summarizers))
+
+
       try:
+        with open(query_path, "r") as query_fp:
+            query_data = json.load(query_fp)
+
+        morph_constraints = []
+        for mc in re.findall(r"<(.*?)>", query_data["IARPA_query"]):
+            morph_constraints.append(mc)
+
         # go over all the input files and run summarization for all summarizers
         for i in range(len(input_paths[0])):
           try:
             # topic model content
-            add_content, add_size = get_additional_content(input_paths[0][i][1], query_path=query_path)
+            add_content, add_size = get_additional_content(
+                input_paths[0][i][1], query_path=query_path)
             length = 0
             final_summary_sens = []
             rankings = []
@@ -368,12 +455,49 @@ def main():
               else:
                 final_summary_sens.append(" ".join(words[:max_length-length]))
                 length = max_length
-            final_summary = "\n".join(final_summary_sens) if not add_content else "\n".join([add_content] + final_summary_sens)
-            output_path = os.path.join(temp_out, os.path.basename(input_paths[0][i][1]))
-            with open(output_path, "w", encoding="utf-8") as fp: fp.write(final_summary)
+
+            if DEBUG:
+                print("QUERY:", query_data["IARPA_query"])
+                if add_content:
+                    print("TOPICS:")
+                    for topic in add_content:
+                        print(topic)                         
+               
+                print("SUMMARY:")
+                print("\n".join(final_summary_sens))
+                print("\n\n")
+
+            if args.highlight:
+
+                if len(morph_constraints):
+                    with open(input_paths[s][i][1], "r") as fp:
+                        en_text = fp.read()
+                    matches = [re.search(re.escape(mc), en_text, flags=re.I)
+                               for mc in morph_constraints]
+                else:
+                    matches = []
+                if np.any([m is None for m in matches]):
+                    hl_weights = None
+                    
+                else:
+                    hl_weights = calculate_highlight_weights(
+                        query_data, final_summary_sens, 
+                        en_embeddings, en_stopwords)
+            else:
+                hl_weights = None
+ 
+            summary_text = [word_tokenize(s) for s in final_summary_sens]
+            
+            doc_id = os.path.splitext(
+                os.path.basename(input_paths[0][i][1]))[0]
+            
+            image_path = os.path.join(summary_dir, "{}.png".format(doc_id))
+
+            generate_image(
+                 image_path, summary_text, topics=add_content, 
+                 highlight_weights=hl_weights)
+
           except: traceback.print_exc()
-        if args.gen_image: summarizers[0]["tl"].sum2img(temp_out, query_path, args.highlight)
-        os.system("mv %s/* %s/ 2> /dev/null" % (temp_out,summary_dir))
         os.system("chmod -R 777 %s" % summary_dir)
       except: traceback.print_exc()
       clientsocket.send(SUMMARIZATION_TRIGGER.encode("utf-8"))
