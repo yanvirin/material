@@ -4,8 +4,9 @@ COLOR_BLACK = ImageColor.getrgb("black")
 COLOR_WHITE = ImageColor.getrgb("white")
 COLOR_YELLOW = ImageColor.getrgb("yellow")
 COLOR_ORANGE = ImageColor.getrgb("orange")
-COLOR_GREEN = ImageColor.getrgb("green")
+COLOR_GREEN = ImageColor.getrgb("#39FF14")
 COLOR_PURPLE = ImageColor.getrgb("purple")
+COLOR_ORCHID = ImageColor.getrgb("orchid")
 
 def wrap_line(line, max_width, font, highlight_weights=None):
     line = list(line)
@@ -91,7 +92,7 @@ def generate_image(path, summary_lines, topics=None, highlight_weights=None,
                    width=600, height=600, 
                    font_color=COLOR_WHITE, background_color=COLOR_BLACK,
                    query_highlight_color=COLOR_GREEN, 
-                   query_color=COLOR_PURPLE,
+                   query_color=COLOR_ORCHID,
                    highlight_color=COLOR_GREEN):
 
     image = Image.new('RGBA', (width, height), background_color)
