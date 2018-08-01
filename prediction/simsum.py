@@ -167,37 +167,98 @@ def get_query(query_path, translate_query):
       return query
 
 # decides how to get the input texts
-def get_input_paths(folder, qResults, is_en):
+def get_input_paths(folder, qResults, is_en, 
+                    text_morph_version="material-scripts-morph-v3.0_cu-code-switching-v3.0_sent-split-v2.0",
+                    tl_audio_morph_version="material-scripts-morph-v3.0_material-asr-tl-v5.0",
+                    sw_audio_morph_version="material-scripts-morph-v3.0_material-asr-sw-v5.0",
+                    text_version="umd-nmt-v2.1_sent-split-v2.0",
+                    audio_version="umd-nmt-v2.1_material-asr-tl-v5.0"):
+
+
+
   paths = []
   if os.path.isfile(qResults):
     with open(qResults,encoding="utf-8") as r:
       results = json.load(r)
       for res in results["document info"]["results"]:
-        index = res["index"]
-        index_toks = index.replace("index_store","mt_store").split("/")
-        filename = res["filename"]
-        ep = "%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2], filename)
-        if is_en:
-          paths.append((ep,ep))
+
+        import pathlib
+        index = pathlib.Path(res["index"])
+        lang = "1A" if "1A" in index.parts else "1B"
+        source = "audio" if "audio" in index.parts else "text"
+        dataset = index.parts[2]
+        if source == "audio":
+            translation_path = pathlib.Path(
+                folder, lang, "IARPA_MATERIAL_BASE-{}".format(lang), dataset,
+                source, "mt_store", audio_version,
+                "{}.txt".format(res["filename"]))
+
+            if lang == "1A":
+                morph_version = sw_audio_morph_version
+            else:
+                morph_version = tl_audio_morph_version
+
+            morph_path = pathlib.Path(
+                folder, lang, "IARPA_MATERIAL_BASE-{}".format(lang), dataset,
+                source, "morphology_store", morph_version,
+                "{}.txt".format(res["filename"]))
         else:
-          # check that the correct laguage was selected in the server
+            translation_path = pathlib.Path(
+                folder, lang, "IARPA_MATERIAL_BASE-{}".format(lang), dataset,
+                source, "mt_store", text_version, 
+                "{}.txt".format(res["filename"]))
+
+            morph_path = pathlib.Path(
+                folder, lang, "IARPA_MATERIAL_BASE-{}".format(lang), dataset,
+                source, "morphology_store", text_morph_version,
+                "{}.txt".format(res["filename"]))
+
+
+
+        if is_en:
+            paths.append((str(translation_path), str(translation_path)))
+        else:
+
+          if DEBUG: print("looking in morpho store: %s" % morph_path)
           input_name = tempfile.NamedTemporaryFile().name
-          index_toks = index.replace("index_store","morphology_store").split("/")
-          morpho_store = "%s/%s" % (folder, "/".join(index_toks[:5]))
-          if DEBUG: print("looking in morpho store: %s" % morpho_store)
-          morpho_ver = list(filter(lambda x: "morph-v3.0" in x.name and ("v5.0" in x.name or "audio" not in ep), sorted(Path(morpho_store).iterdir(), key=lambda f: f.stat().st_mtime)))[-1].name
-          input_file = "%s/%s/%s.txt" % (morpho_store, morpho_ver, filename)
-          with open(input_name, "w",encoding="utf-8") as w:
-           with open(input_file,encoding="utf-8") as r:
+          with open(input_name, "w",encoding="utf-8") as w, open(morph_path, encoding="utf-8") as r:
             for line in r:
               d = json.loads(line)
               if len(d) > 0: 
                 w.write(" ".join(map(lambda x: x["word"], d[0])) + "\n")
               else:
                 w.write("empty.\n")
-          paths.append((input_name, ep))
-          if (len(fileaslist(input_name))!=len(list(filter(lambda x: len(x)>0,fileaslist(ep))))): 
-            if DEBUG: print("DEBUG: diff sizes %s vs %s" % (input_file, ep))
+          paths.append((input_name, str(translation_path)))
+            
+
+
+#        index = res["index"]
+#        print(index)
+#        print(res)
+#        index_toks = index.replace("index_store","mt_store").split("/")
+#        filename = res["filename"]
+#        ep = "%s/%s/%s/%s.txt" % (folder, "/".join(index_toks[:5]), index_toks[-2], filename)
+#        if is_en:
+#          paths.append((ep,ep))
+#        else:
+#          # check that the correct laguage was selected in the server
+#          input_name = tempfile.NamedTemporaryFile().name
+#          index_toks = index.replace("index_store","morphology_store").split("/")
+#          morpho_store = "%s/%s" % (folder, "/".join(index_toks[:5]))
+#          if DEBUG: print("looking in morpho store: %s" % morpho_store)
+#          morpho_ver = list(filter(lambda x: "morph-v3.0" in x.name and ("v5.0" in x.name or "audio" not in ep), sorted(Path(morpho_store).iterdir(), key=lambda f: f.stat().st_mtime)))[-1].name
+#          input_file = "%s/%s/%s.txt" % (morpho_store, morpho_ver, filename)
+#          with open(input_name, "w",encoding="utf-8") as w:
+#           with open(input_file,encoding="utf-8") as r:
+#            for line in r:
+#              d = json.loads(line)
+#              if len(d) > 0: 
+#                w.write(" ".join(map(lambda x: x["word"], d[0])) + "\n")
+#              else:
+#                w.write("empty.\n")
+#          paths.append((input_name, ep))
+#          if (len(fileaslist(input_name))!=len(list(filter(lambda x: len(x)>0,fileaslist(ep))))): 
+#            if DEBUG: print("DEBUG: diff sizes %s vs %s" % (input_file, ep))
   else:
     for path in os.listdir(folder):
       p = "%s/%s" % (folder, path)
@@ -266,7 +327,7 @@ def get_additional_content(source_path, query_path):
     return None, 0
 
 def calculate_highlight_weights(query_data, summary_sentences, emb_dict, 
-                                stopwords):
+                                stopwords, threshold_topk=3):
 
     normalized_summary_sents = [[w.lower() for w in word_tokenize(sent)] 
                                 for sent in summary_sentences]
@@ -287,10 +348,10 @@ def calculate_highlight_weights(query_data, summary_sentences, emb_dict,
     
     query_thresholds = []
     for q, query in enumerate(query_words):
-        thr = np.sort(emb_sim[:,q])[-3]
+        thr = np.sort(emb_sim[:,q])[-threshold_topk]
         query_thresholds.append(thr)
     query_thresholds = np.array(query_thresholds)
-    emb_sim[emb_sim <= query_thresholds] = 0.
+    emb_sim[emb_sim < query_thresholds] = 0.
     word2emb_sim = {}
     for word, emb_sim_row in zip(normalized_summary_words, emb_sim):
         word2emb_sim[word] = np.max(emb_sim_row)
@@ -344,6 +405,8 @@ def main():
         "--workDir", required=False, type=str, default=".")
     parser.add_argument(
         "--highlight", required=False, type=str, default="None")
+    parser.add_argument(
+        "--highlight-topk", required=False, type=int, default=3)
     parser.add_argument(
         "--translate-query", required=False, type=str, default="False")
     parser.add_argument(
@@ -480,7 +543,8 @@ def main():
                 else:
                     hl_weights = calculate_highlight_weights(
                         query_data, final_summary_sens, 
-                        en_embeddings, en_stopwords)
+                        en_embeddings, en_stopwords, 
+                        threshold_topk=args.highlight_topk)
             else:
                 hl_weights = None
  
