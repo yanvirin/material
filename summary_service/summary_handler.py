@@ -12,7 +12,7 @@ import logging
 
 def read_morphology(path):
     data = []
-    with open(path, "r") as fp:
+    with open(path, "r", encoding="utf8") as fp:
         for line in fp:
             datum = json.loads(line)
             if len(datum):
@@ -22,7 +22,7 @@ def read_morphology(path):
     return data
 
 def read_translation(path):
-    with open(path, "r") as fp:
+    with open(path, "r", encoding="utf8") as fp:
         return [word_tokenize(line) for line in fp if len(line.strip())]
 
 def get_query_content(query):
@@ -260,7 +260,7 @@ def summarize_query_result(result, query_data, system_context):
     meta_path = system_context["summary_dir"] / query_id / \
         "{}.json".format(result["doc_id"])
 
-    with open(meta_path, "w") as fp:
+    with open(meta_path, "w", encoding="utf8") as fp:
         fp.write(json.dumps(meta))
 
 def merge_rankings(rankings):
