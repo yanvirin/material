@@ -1,97 +1,150 @@
-import sys,os,uuid,json
-from collections import defaultdict
-import datetime,argparse,tempfile
+import argparse
+import pathlib
+import shutil
+import datetime
 from submission_namer import rename_submission
+import uuid
+import json
+import tarfile
+
 
 renaming_script_path = "./material_create_submission_filename-v0.1.3.py"
-SYSTEM_NAME = "system1"
-
-GEN_INSTR = """
--- Every summary consists of a paragraph of text.
--- The summary may be written in poor English; this does not necessarily mean it is not relevant.
--- Green highlighting indicates our (possibly incorrect) belief about the relevance of the word to the query.
--- Green indicates very relevant while white indicates less relevant.
--- It is possible that some relevant words are not highlighted.
--- At the top of the summary we will show some words from the document that are topically related to each query term.
--- They may help illustrate the context in which the query occurs in the document.
-"""
-
-INSTRUCTIONS = {
-    "component_1": GEN_INSTR,
-    "component_2": GEN_INSTR,
-    "domain": ""}
+SYSTEM_NAME = "en_src_emb_sim-hl2-kw-umdnmt2_1-morph3_0-asr5_0"
 
 now = datetime.datetime.now().isoformat().split(".")[0] + "Z"
+IMAGE_TEMPLATE = "{team}.{system}.{query}.{doc}.png"
+JSON_TEMPLATE = "{team}.{system}.{query}.{doc}.json"
 
-parser = argparse.ArgumentParser()
 
-parser.add_argument("--query-folder", type=str, required=True)
-parser.add_argument("--results-folder", type=str, required=True)
-parser.add_argument("--summary-dir", type=str, required=True)
-parser.add_argument("--run-name", type=str, required=True)
-parser.add_argument("--package-dir", type=str, required=True)
-parser.add_argument("--exp-path", type=str, required=True)
+def validate_results(results_paths, summary_dir):
+    for results_path in results_path:
+        with open(results_path, "r", encoding="utf8") as fp:
+            query_id, query_domain_strin = fp.readline().strip().split()
+            for line in fp: 
+                doc_id, _ = line.strip().split()
+                image_path = summary_dir / query_id / "{}.png".format(doc_id)
+                json_path = summary_dir / query_id / "{}.json".format(doc_id)
+                #if not image_path.exists():
+                #"Missing 
 
-args = parser.parse_args()
+def parse_results_tsv(path):
+    results = []
+    data = {"results": results}
+    with open(path, "r", encoding="utf8") as fp:
+        query_id, query_domain_string = fp.readline().strip().split("\t")
+        data["query_id"] = query_id
+        query_string, domain_string = query_domain_string.rsplit(":", 1)
+        data["query_string"] = query_string
+        data["domain_string"] = domain_string
+        for line in fp:
+            doc_id, score = line.strip().split("\t")
+            results.append({"doc_id": doc_id, "score": score})
+    return data
 
-os.system("mkdir -p %s" % args.package_dir)
 
-queries = dict()
-data = defaultdict(list)
 
-# write all the data to the files and rename images and summaries
-# to fit the correct format
-temp_dir = tempfile.mkdtemp()
-for q_f in os.listdir(args.summary_dir):
-  qid = q_f
-  os.system("mkdir -p %s/%s" % (temp_dir,q_f))
-  res_f = "q-%s.json" % qid
-  with open("%s/%s" % (args.query_folder,qid)) as qr: qdict = json.load(qr)
-  with open("%s/%s" % (args.results_folder,res_f)) as rr: rdict = json.load(rr)
-  with open("%s/%s/s-%s.tsv" % (temp_dir,qid,qid),"w") as qw:
-    # record the query name and domain
-    query_str = "%s:%s" % (qdict["IARPA_query"],qdict["domain"]["desc"])
-    qw.write("%s\t%s\n" % (qid,query_str))
-    # go over all results and record the needed data
-    for res in rdict["document info"]["results"]:
-      doc_id = res["filename"]
-      relevance = res["score"]
-      sum_id = str(uuid.uuid4())
-      file_id = "SCRIPTS.%s.%s.%s" % (SYSTEM_NAME,qid,doc_id)
-      qw.write("%s\t%f\t%s.json\n" % (doc_id,float(relevance),file_id))
-      with open("%s/%s/%s.json" % (temp_dir,qid,file_id),"w") as rw:
-        os.system("cp %s/%s/%s.png %s/%s/%s.png" % (args.summary_dir,qid,doc_id,temp_dir,qid,file_id))
-        os.system("cp %s/%s/%s.txt %s/%s/%s.txt" % (args.summary_dir,qid,doc_id,temp_dir,qid,file_id))
-        with open("%s/%s/%s.txt" % (temp_dir,qid,file_id)) as sf:
-          word_list = [line.strip().split(" ") for line in sf.readlines()]
-          word_list = [item for sublist in word_list for item in sublist]
-          assert(len(word_list) <= 100)
-        d = dict()
-        d["team_id"] = "SCRIPTS"
-        d["sys_label"] = SYSTEM_NAME
-        d["uuid"] = sum_id
-        d["query_id"] = qid
-        d["document_id"] = doc_id
-        d["run_name"] = args.run_name
-        d["run_date_time"] = now
-        d["image_uri"] = "%s.png" % file_id
-        d["word_list"] = word_list 
-        d["instructions"] = INSTRUCTIONS
-        json.dump(d,rw)
-        rw.write("\n")
+def create_query_tar(input_dir, target_dir, clir_results, run_name):
+    target_dir.mkdir(parents=True, exist_ok=True)
+    e2e_results = []
+    for result in clir_results["results"]:
+        doc_id = result["doc_id"]
+        score = result["score"]
+        
+        # Copy image path.
+        source_image_path = input_dir / "{}.png".format(doc_id)
+        target_image_path = target_dir / IMAGE_TEMPLATE.format(
+            team="SCRIPTS", 
+            system=SYSTEM_NAME, 
+            query=clir_results["query_id"], 
+            doc=doc_id)
+        target_image_path.write_bytes(source_image_path.read_bytes())
+    
+        source_json_path = input_dir / "{}.json".format(doc_id)
+        target_json_path = target_dir / JSON_TEMPLATE.format(
+            team="SCRIPTS", 
+            system=SYSTEM_NAME, 
+            query=clir_results["query_id"], 
+            doc=doc_id)
+        summary_data = json.loads(
+            source_json_path.read_bytes(), encoding="utf8")
 
-os.system("chmod 777 -R %s" % temp_dir)
-# pacakge the stuff
-package_path = "%s/summary-package.tgz" % args.package_dir
-output_folder = tempfile.mkdtemp()
-for q_f in os.listdir(args.summary_dir):
-  os.system("tar -czvf %s/%s.tgz -C %s %s" % (output_folder,q_f,temp_dir,q_f))
-os.system("chmod 777 -R %s" % output_folder)
-os.system("tar -czvf %s -C %s ." % (package_path,output_folder))
-os.system("rm -rf %s" % output_folder)
-os.system("rm -rf %s" % temp_dir)
+        summary_data["team_id"] = "SCRIPTS"
+        summary_data["sys_label"] = SYSTEM_NAME
+        summary_data["uuid"] = str(uuid.uuid4())
+        summary_data["query_id"] = clir_results["query_id"]
+        summary_data["document_id"] = doc_id
+        summary_data["run_name"] = run_name
+        summary_data["run_date_time"] = now
+        summary_data["image_uri"] = str(target_image_path.name)
 
-#rename
-with open(args.exp_path) as expr: pipeline_data = json.load(expr)
-rename_submission(pipeline_data, package_path, args.package_dir, renaming_script_path)
-os.system("chmod 777 -R %s" % args.package_dir)
+        target_json_path.write_text(
+            json.dumps(summary_data), encoding="utf8")
+        e2e_results.append("\t".join([doc_id, score, target_json_path.name]))
+
+    e2e_query_tsv = target_dir / "s-{query_id}.tsv".format(**clir_results)
+    e2e_query_text = "\n".join([
+        "{query_id}\t{query_string}:{domain_string}".format(**clir_results),
+        *e2e_results])
+    e2e_query_tsv.write_text(e2e_query_text, encoding="utf8")
+
+    tar_path = target_dir.parent / "{query_id}.tgz".format(**clir_results)
+    with tarfile.open(tar_path, "w:gz") as tar:
+        for path in target_dir.glob("*"):
+            arc_path = pathlib.Path(clir_results["query_id"]) / path.name
+            tar.add(
+                str(path), 
+                arcname=str(arc_path))   
+    shutil.rmtree(str(target_dir))
+    return tar_path.name
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--query-folder", type=str, required=True)
+    parser.add_argument("--results-folder", type=str, required=True)
+    parser.add_argument("--summary-dir", type=str, required=True)
+    parser.add_argument("--run-name", type=str, required=True)
+    parser.add_argument("--package-dir", type=str, required=True)
+    parser.add_argument("--exp-path", type=str, required=True)
+    
+    args = parser.parse_args()
+
+    summary_dir = pathlib.Path(args.summary_dir)
+    
+    package_dir = pathlib.Path(args.package_dir)
+    package_dir.mkdir(parents=True, exist_ok=True)
+
+    results_dir = pathlib.Path(args.results_folder)
+
+    #results_paths = [x for x in results_dir.glob("*.tsv")]
+    #results_paths.sort()
+
+    #validate_results(results_paths, summary_dir)
+    
+
+    query_tar_paths = []
+    for summary_query_dir in summary_dir.glob("query*"):
+        query_id = summary_query_dir.name
+        
+        clir_results_tsv = results_dir / "q-{}.tsv".format(query_id)
+        clir_results = parse_results_tsv(clir_results_tsv)
+        target_dir = package_dir / query_id
+        query_tar_path = create_query_tar(
+            summary_query_dir, target_dir, clir_results, args.run_name)
+        query_tar_paths.append(query_tar_path)
+    
+    tmp_tar_name = package_dir / "{}.tgz".format(str(uuid.uuid4()))
+    
+    with tarfile.open(tmp_tar_name, "w:gz") as tar:
+        for local_tar_path in query_tar_paths:
+            canon_tar_path = package_dir / local_tar_path
+            tar.add(canon_tar_path, arcname=local_tar_path)
+            canon_tar_path.unlink()
+
+    pipeline_data = json.loads(
+        pathlib.Path(args.exp_path).read_bytes(), encoding="utf8")
+    rename_submission(pipeline_data, str(tmp_tar_name), str(package_dir), renaming_script_path)
+    tmp_tar_name.unlink()
+
+if __name__ == "__main__":
+    main()
