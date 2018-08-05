@@ -87,15 +87,15 @@ def create_query_tar(input_dir, target_dir, clir_results, run_name):
         *e2e_results])
     e2e_query_tsv.write_text(e2e_query_text, encoding="utf8")
 
-    tar_path = target_dir.parent / "{query_id}.tgz".format(**clir_results)
-    with tarfile.open(tar_path, "w:gz") as tar:
-        for path in target_dir.glob("*"):
-            arc_path = pathlib.Path(clir_results["query_id"]) / path.name
-            tar.add(
-                str(path), 
-                arcname=str(arc_path))   
-    shutil.rmtree(str(target_dir))
-    return tar_path.name
+#    tar_path = target_dir.parent / "{query_id}.tgz".format(**clir_results)
+#    with tarfile.open(tar_path, "w:gz") as tar:
+#        for path in target_dir.glob("*"):
+#            arc_path = pathlib.Path(clir_results["query_id"]) / path.name
+#            tar.add(
+#                str(path), 
+#                arcname=str(arc_path))   
+#    shutil.rmtree(str(target_dir))
+#    return tar_path.name
 
 def main():
     parser = argparse.ArgumentParser()
@@ -122,24 +122,26 @@ def main():
     #validate_results(results_paths, summary_dir)
     
 
-    query_tar_paths = []
+    query_dir_paths = []
     for summary_query_dir in summary_dir.glob("query*"):
         query_id = summary_query_dir.name
         
         clir_results_tsv = results_dir / "q-{}.tsv".format(query_id)
         clir_results = parse_results_tsv(clir_results_tsv)
         target_dir = package_dir / query_id
-        query_tar_path = create_query_tar(
+        create_query_tar(
             summary_query_dir, target_dir, clir_results, args.run_name)
-        query_tar_paths.append(query_tar_path)
+        query_dir_paths.append(target_dir)
     
     tmp_tar_name = package_dir / "{}.tgz".format(str(uuid.uuid4()))
     
     with tarfile.open(tmp_tar_name, "w:gz") as tar:
-        for local_tar_path in query_tar_paths:
-            canon_tar_path = package_dir / local_tar_path
-            tar.add(canon_tar_path, arcname=local_tar_path)
-            canon_tar_path.unlink()
+        for query_dir_path in query_dir_paths:
+            
+            #canon_tar_path = package_dir / local_dir_path
+            tar.add(query_dir_path, arcname=query_dir_path.name)
+            shutil.rmtree(str(target_dir))
+            #canon_tar_path.unlink()
 
     pipeline_data = json.loads(
         pathlib.Path(args.exp_path).read_bytes(), encoding="utf8")
