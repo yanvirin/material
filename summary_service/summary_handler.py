@@ -151,7 +151,7 @@ def summarize_query_result(result, query_data, system_context):
     doc_translation = read_translation(result["translation_path"])
     summary_word_budget = system_context["summary_length"]
 
-    bad_alignment = len(doc_translation) != len(doc_morphology):
+    bad_alignment = len(doc_translation) != len(doc_morphology)
 
     if bad_alignment:
         logging.error(
