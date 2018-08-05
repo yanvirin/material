@@ -140,7 +140,7 @@ def main():
             
             #canon_tar_path = package_dir / local_dir_path
             tar.add(query_dir_path, arcname=query_dir_path.name)
-            shutil.rmtree(str(target_dir))
+            shutil.rmtree(str(query_dir_path))
             #canon_tar_path.unlink()
 
     pipeline_data = json.loads(
