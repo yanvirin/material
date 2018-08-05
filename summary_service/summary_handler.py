@@ -151,7 +151,9 @@ def summarize_query_result(result, query_data, system_context):
     doc_translation = read_translation(result["translation_path"])
     summary_word_budget = system_context["summary_length"]
 
-    if len(doc_translation) != len(doc_morphology):
+    bad_alignment = len(doc_translation) != len(doc_morphology):
+
+    if bad_alignment:
         logging.error(
             " Translation/Morphology length not equal!\n morph={}\n trans={})".format(
                 result["morphology_path"],
@@ -179,13 +181,13 @@ def summarize_query_result(result, query_data, system_context):
    
     sentence_rankings = []
 
-    if system_context["sentence_rankers"]["translation"]:
+    if system_context["sentence_rankers"]["translation"] or bad_alignment:
         ranking = sentence_ranker.query_embedding_similarity(
             doc_translation, query_content, 
             system_context["english_embeddings"]["model"])
         sentence_rankings.append(ranking) 
 
-    if system_context["sentence_rankers"]["source"]:
+    if system_context["sentence_rankers"]["source"] and not bad_alignment:
         if result["language"] == "1A":
             emb = system_context["swahili_embeddings"]["model"]
         elif result["language"] == "1B":
