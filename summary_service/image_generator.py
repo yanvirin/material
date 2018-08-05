@@ -180,7 +180,7 @@ def generate_image(path, summary_lines, topics=None,
         path = pathlib.Path(path)
     if not path.parent.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "wb" as fp):
+    with open(path, "wb") as fp:
         image.save(fp, format="PNG")
 
 def calculate_highlight_weights(query, summary_sentences, emb_dict,
