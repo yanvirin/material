@@ -254,7 +254,8 @@ def summarize_query_result(result, query_data, system_context):
 
     instructions = {"component_{}".format(i): instr 
                     for i, instr in enumerate(instructions, 1)} 
-    
+    instructions["domain"] = summary_instructions.get_domain_instructions(
+        query_data["domain"]["desc"])
     meta = {"word_list": [w for s in extract_summary for w in s 
                           if not is_punctuation(w)],
             "instructions": instructions}
