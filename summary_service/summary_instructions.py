@@ -102,11 +102,11 @@ def get_instructions(raw_query, exact_match_list, not_found_list):
 
 
 domain_instructions = {
-    "Government-and-Politics": "If the document seems like it would belong in the Politics section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Government and Politics. A detailed definition of the topic, with examples, is shown below.",
+    "Government-And-Politics": "If the document seems like it would belong in the Politics section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Government and Politics. A detailed definition of the topic, with examples, is shown below.",
     "Lifestyle": "If the document seems like it would belong in the Culture, Fashion, Food, Home and Garden, or Travel section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Lifestyle. A detailed definition of the topic, with examples, is shown below.",
-    "Business-and-Commerce": "If the document seems like it would belong in the Business, Economy, or Markets section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Business and Commerce. A detailed definition of the topic, with examples, is shown below.",
-    "Law-and-Order": "If the document seems like it would belong in the Law section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Law and Order. A detailed definition of the topic, with examples, is shown below.",
-    "Physical-and-Mental-Health": "If the document seems like it would belong in the Health or Wellness section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Physical and Mental Health. A detailed definition of the topic, with examples, is shown below.",
+    "Business-And-Commerce": "If the document seems like it would belong in the Business, Economy, or Markets section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Business and Commerce. A detailed definition of the topic, with examples, is shown below.",
+    "Law-And-Order": "If the document seems like it would belong in the Law section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Law and Order. A detailed definition of the topic, with examples, is shown below.",
+    "Physical-And-Mental-Health": "If the document seems like it would belong in the Health or Wellness section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Physical and Mental Health. A detailed definition of the topic, with examples, is shown below.",
     "Military": "A detailed definition of the topic of Military, with examples, is shown below.",
     "Sports": "If the document seems like it would belong in the Sports section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Sports. A detailed definition of the topic, with examples, is shown below."}
 
