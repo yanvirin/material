@@ -5,7 +5,6 @@
 GREEN = '#39FF14'
 PURPLE = '#DA70D6'
 
-
 def parse_query_helper(query):
     constraint, morphological, example = None, None, None
     conceptual = False
@@ -14,9 +13,9 @@ def parse_query_helper(query):
         query = query.replace('"', '')
     
     if '[' in query:
-        query = query.split('[')
-        constraint = query[1][5:-1]
-        query = query[0]
+        start, end = query.find('['), query.find(']')
+        constraint = query[start+5:end]
+        query = query[:start] + query[end+1:]
 
     if query.endswith('+'):
         conceptual = True
@@ -53,11 +52,11 @@ def get_instructions(raw_query, exact_match_list, not_found_list):
         line1 = 'The query term <b><font color="%s">%s</font></b> appears in <b><font color="%s">%s</font></b> in the top portion of the summary above.' % (color, constrained_query, color, color_text)
 
         line2 = []
-        exact_matches = [word for word in exact_match_list if word in query]
+        exact_matches = [word for word in exact_match_list if word.lower() in query.lower()]
         if len(exact_matches) > 0:
             line2.append('We found an exact match for the query term <b><font color="%s">%s</font></b> in the document.' % (color, ' '.join(exact_matches)))
 
-        not_found = [word for word in not_found_list if word in query]
+        not_found = [word for word in not_found_list if word.lower() in query.lower()]
         some_missing = (len(not_found) > 0)
         if some_missing:
             line2.append('We did not find an exact match for the query term <b><font color="%s">%s</font></b> in the document.' % (color, ' '.join(not_found)))
@@ -99,7 +98,6 @@ def get_instructions(raw_query, exact_match_list, not_found_list):
             
         all_outputs.append('\n'.join([line1, line2, line3]))
     return all_outputs
-
 
 domain_instructions = {
     "Government-And-Politics": "If the document seems like it would belong in the Politics section of a newspaper (not necessarily an English newspaper), it probably discusses the topic of Government and Politics. A detailed definition of the topic, with examples, is shown below.",
