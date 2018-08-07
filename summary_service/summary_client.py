@@ -2,6 +2,7 @@ import argparse
 import json
 import socket
 import pathlib
+import time
 
 
 def read_example(path):
@@ -65,8 +66,10 @@ def main():
     parser.add_argument(
         "--logging-level", type=str, default=None, required=False,
         choices=["info", "warning", "debug"])
+    parser.add_argument("--waitTime", required=False, type=int, default=30)
+    parser.add_argument(
+        "--maxWaitAttempts", required=False, type=int, default=60)
     args = parser.parse_args()
-
 
     if args.action == "query":  
         message = {"message_type": "query",
@@ -105,13 +108,25 @@ def main():
                    "message_data": message_data}
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(("0.0.0.0", args.port))
+
+    tries = 0
+    success = False
+    while (not success and tries < args.maxWaitAttempts):
+        try:
+            s.connect(("0.0.0.0", args.port))
+            success = True
+        except (RuntimeError, ConnectionRefusedError):
+            tries += 1
+            time.sleep(args.waitTime)
+            if tries == args.maxWaitAttempts:
+                sys.exit(1)
+                print("Failed to connect within the specified timeframe %d wait time x %d tries" % (args.waitTime,args.maxWaitAttempts))
+
     message_bytes = json.dumps(message).encode("utf8")
     s.send(message_bytes)
-
+        
     msg = s.recv(10)
     print(msg.decode("utf8"))
-
 
 if __name__ == "__main__":
     main()
