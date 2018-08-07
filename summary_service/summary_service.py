@@ -48,7 +48,8 @@ def main():
         "--logging-level", required=False, type=str, default="warning",
         choices=["info", "warning", "debug"])
     parser.add_argument("--sentence-rankers", default=["translation"], 
-        choices=["translation", "source", "crosslingual"], type=str,
+        choices=["translation", "source", "crosslingual", 
+                 "lexical-expansion-translation"], type=str,
         nargs="+")
 
     args = parser.parse_args()
@@ -116,6 +117,7 @@ def main():
             "translation": "translation" in args.sentence_rankers,
             "source": "source" in args.sentence_rankers,
             "crosslingual": "crosslingual" in args.sentence_rankers,
+            "lexical-expansion-translation": "lexical-expansion-translation" in args.sentence_rankers,
         },
         "summary_length": args.length,
         "summary_dir": summary_dir,

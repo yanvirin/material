@@ -201,6 +201,16 @@ def summarize_query_result(result, query_data, system_context):
             doc_morphology, trans_query, 
             emb)
         sentence_rankings.append(ranking) 
+    if system_context["sentence_rankers"]["lexical-expansion-translation"]:
+        
+        qestring = query_data["english"]["expanded"][1]["expanded_words"]
+        query_expansion = [ws.split(":") for ws in qestring.split(";")]
+        query_expansion = [(ws[0], float(ws[1])) if len(ws) == 2 else (ws[0], 1.) 
+                           for ws in query_expansion]
+        query_words = query_data["english"]["words"]
+        ranking = sentence_ranker.query_lexical_similarity(
+            doc_translation, query_content, query_expansion)
+        sentence_rankings.append(ranking)
 
     ranking = merge_rankings(sentence_rankings)
     best_sentence_indices = np.argsort(ranking)
