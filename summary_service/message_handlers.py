@@ -6,6 +6,7 @@ import importlib
 import results_handler
 import json
 import pathlib
+import os
 
 
 def handle_logging(request_data, system_context):
@@ -113,8 +114,12 @@ def handle_query(request_data, system_context):
     results = results_handler.load_clir_results(
         clir_results_tsv, system_context)
 
+    query_dir = system_context["summary_dir"] / query_id
+    query_dir.mkdir(parents=True, exist_ok=True)
+
     for result in results:
         summary_handler.summarize_query_result(
             result, query_data, system_context)
 
+    os.system("chmod -R 777 {}".format(str(query_dir)))
 
