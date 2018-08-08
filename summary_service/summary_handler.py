@@ -177,8 +177,7 @@ def summarize_query_result(result, query_data, system_context):
         topics, topic_word_count = get_topics(
             doc_translation, query_content, system_context)
    
-    summary_word_budget -= topic_word_count - 3
-   
+    summary_word_budget -= (topic_word_count + 3)
     sentence_rankings = []
 
     if system_context["sentence_rankers"]["translation"] or bad_alignment:
@@ -266,8 +265,24 @@ def summarize_query_result(result, query_data, system_context):
                     for i, instr in enumerate(instructions, 1)} 
     instructions["domain"] = summary_instructions.get_domain_instructions(
         query_data["domain"]["desc"])
-    meta = {"word_list": [w for s in extract_summary for w in s 
-                          if not is_punctuation(w)],
+
+
+    word_list = []
+    if topics:
+        word_list.extend(["QUERY", "TOPICS"])
+        for topic in topics:
+            word_list.extend(topic["query"])
+            word_list.extend(topic["topic_words"])
+
+    word_list.append("SUMMARY")
+    word_list.extend([w for s in extract_summary for w in s 
+                      if not is_punctuation(w)])
+
+    if len(word_list) > 100:
+        logging.warn(" {}/{} Summary word list > 100 words.".format(
+            query_id, doc_id))
+
+    meta = {"word_list": word_list,
             "instructions": instructions}
 
     meta_path = system_context["summary_dir"] / query_id / \
