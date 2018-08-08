@@ -6,10 +6,12 @@ from submission_namer import rename_submission
 import uuid
 import json
 import tarfile
+import os
 
 
 renaming_script_path = "./material_create_submission_filename-v0.1.3.py"
-SYSTEM_NAME = "en_src_emb_sim-hl2-kw-umdnmt2_1-morph3_0-asr5_0"
+#SYSTEM_NAME = "en_src_emb_sim-hl2-kw-umdnmt2_1-morph3_0-asr5_0"
+SYSTEM_NAME = "EnSrcEmbLexSimHl2Kw"
 
 now = datetime.datetime.now().isoformat().split(".")[0] + "Z"
 IMAGE_TEMPLATE = "{team}.{system}.{query}.{doc}.png"
@@ -145,8 +147,11 @@ def main():
 
     pipeline_data = json.loads(
         pathlib.Path(args.exp_path).read_bytes(), encoding="utf8")
-    rename_submission(pipeline_data, str(tmp_tar_name), str(package_dir), renaming_script_path)
+    rename_submission(
+        pipeline_data, str(tmp_tar_name), str(package_dir), 
+        renaming_script_path)
     tmp_tar_name.unlink()
+    os.system("chmod 777 {}/*".format(str(package_dir)))
 
 if __name__ == "__main__":
     main()
