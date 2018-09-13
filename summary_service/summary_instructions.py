@@ -43,58 +43,68 @@ def get_instructions(raw_query, exact_match_list, not_found_list):
     for i in range(len(queries)):
         query, constraint, conceptual, example, morphological = queries[i]
         
+        term_word = 'word'
+        if conceptual:
+            term_word = 'topic'
+        else:
+            term_word = 'phrase'
+        
         if i == 0:
             color, color_text = GREEN, 'green'
         else:
             color, color_text = PURPLE, 'purple'
 
         constrained_query = '%s (%s)' % (query, constraint) if constraint else query
-        line1 = 'The query term <b><font color="%s">%s</font></b> appears in <b><font color="%s">%s</font></b> in the top portion of the summary above.' % (color, constrained_query, color, color_text)
+        line1 = 'The %s <b><font color="%s">%s</font></b> appears in <b><font color="%s">%s</font></b> in the top portion of the summary above.' % (term_word, color, constrained_query, color, color_text)
 
         line2 = []
         exact_matches = [word for word in exact_match_list if word.lower() in query.lower()]
-        if len(exact_matches) > 0:
-            line2.append('We found an exact match for the query term <b><font color="%s">%s</font></b> in the document.' % (color, ' '.join(exact_matches)))
+        num_matches = len(exact_matches)
+        if num_matches > 0:
+            match_word = 'word'
+            if num_matches > 1:
+                match_word = match_word + 's'
+            line2.append('We found an exact match for the %s <b><font color="%s">%s</font></b> in the document. If it appears in the summary, it is highlighted in yellow.' % (match_word, color, ' '.join(exact_matches)))
 
         not_found = [word for word in not_found_list if word.lower() in query.lower()]
-        some_missing = (len(not_found) > 0)
+        num_missing = len(not_found)
+        some_missing = num_missing > 0
         if some_missing:
-            line2.append('We did not find an exact match for the query term <b><font color="%s">%s</font></b> in the document.' % (color, ' '.join(not_found)))
+            missing_word = 'word'
+            if num_missing > 1:
+                missing_word = missing_word + 's'
+            line2.append('We did not find an exact match for some words. These words are shown at the bottom of the summary.') #% (missing_word, color, ' '.join(not_found)))
             
         line2 = ' '.join(line2)
 
         line3 = ''
         if not some_missing:
-            if not constraint and not conceptual and not example:
-                line3 = 'The document is relevant, and you should answer <b>"Yes."</b>'
-            elif conceptual:
-                line3 = 'Please read the summary and decide how likely it is that the document discusses the topic of <b><font color="%s">%s</font></b>.' % (color, constrained_query)
+            if conceptual:                
+                line3 = 'Check the summary to make sure it mentions the topic of <b><font color="%s">%s</font></b>.' % (color, constrained_query)
                 if constraint:
-                    line3 = line3 + ' Make sure to look for the specific sense of the query term <b><font color="%s">%s</font></b> given by <b><font color="%s">%s</font></b>.' % (color, query, color, constraint)
-
+                    line3 = line3 + ' Make sure to look for the specific sense of <b><font color="%s">%s</font></b> given by <b><font color="%s">%s</font></b>.' % (color, query, color, constraint)
             elif example:
-                line3 = 'The document MAY BE relevant. Read the sentence snippets to make sure the document mentions an example of <b><font color="%s">%s</font></b>.' % (color, constrained_query)
+                line3 = 'Check the summary to make sure it mentions an example of <b><font color="%s">%s</font></b>.' % (color, constrained_query)
                 if constraint:
-                    line3 = line3 + ' Make sure to look for the specific sense of the query term <b><font color="%s">%s</font></b> given by <b><font color="%s">%s</font></b>.' % (color, query, color, constraint)
-                    
-            else: # constrained and not conceptual or example_of
-                line3 = 'The document MAY BE relevant. Check the list of topically related words and read the sentence snippets to make sure the document is relevant to the specific sense of the query term <b><font color="%s">%s</font></b> given by <b><font color="%s">%s</font></b>.' % (color, query, color, constraint)
+                    line3 = line3 + ' Make sure to look for the specific sense of <b><font color="%s">%s</font></b> given by <b><font color="%s">%s</font></b>.' % (color, query, color, constraint)
+            elif constraint:
+                line3 = 'Check the summary to make sure the specific sense of <b><font color="%s">%s</font></b> given by <b><font color="%s">%s</font></b> appears.' % (color, query, color, constraint)
 
         else: # some query terms not found
-            if not conceptual or example:
-                line3 = 'The document may still be relevant. Read the summary and look for words or phrases that mean the same thing as the query term.'
+            if conceptual:
+                line3 = 'Read the summary and look for words or phrases that are related to the topic of <b><font color="%s">%s</font></b>.' % (color, constrained_query)
                 
-            elif conceptual:
-                line3 = 'Please read the summary and decide how likely it is that the document discusses the topic of <b><font color="%s">%s</font></b>.' % (color, constrained_query)
+            elif example:
+                line3 = 'Read the summary and look for words or phrases that are examples of <b><font color="%s">%s</font></b>.' % (color, constrained_query)
 
-            else: # example
-                line3 = 'The document may still be relevant. Read the sentence snippets and look for words or phrases that are examples of <b><font color="%s">%s</font></b>.' % (color, constrained_query)
+            else:
+                line3 = 'Read the summary and look for words or phrases that mean the same thing as %s <b><font color="%s">%s</font></b>.' % (term_word, color, constrained_query)
 
             if morphological:
                 line3 = line3[:-1] + ' AND have exactly the same number (singular vs. plural, for nouns) or tense (for verbs).'
 
             if constraint:
-                line3 = line3 + ' Make sure to look for the specific sense of the query term <b><font color="%s">%s</font></b> given by <b><font color="%s">%s</font></b>.' % (color, query, color, constraint)                
+                line3 = line3 + ' Make sure to look for the specific sense of <b><font color="%s">%s</font></b> given by <b><font color="%s">%s</font></b>.' % (color, query, color, constraint)
             
         all_outputs.append('\n'.join([line1, line2, line3]))
     return all_outputs
