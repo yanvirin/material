@@ -6,9 +6,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 COLOR_BLACK = ImageColor.getrgb("black")
 COLOR_WHITE = ImageColor.getrgb("white")
+COLOR_YELLOW = ImageColor.getrgb("#EFEFE0")
 COLOR_YELLOW = ImageColor.getrgb("yellow")
 COLOR_ORANGE = ImageColor.getrgb("orange")
 COLOR_GREEN = ImageColor.getrgb("#39FF14")
+COLOR_RED = ImageColor.getrgb("red")
 COLOR_PURPLE = ImageColor.getrgb("purple")
 COLOR_ORCHID = ImageColor.getrgb("orchid")
 
@@ -87,12 +89,13 @@ def draw_topic(topic, draw, font, y_pos, topic_color=COLOR_WHITE,
               font=font, fill=topic_color)
 
 
-def draw_wrapped_lines(wrapped_lines, draw, font, y_pos, 
+def draw_wrapped_lines(wrapped_lines, draw, font, bold_font, y_pos, 
                        wrapped_weights1=None,
                        wrapped_weights2=None,
                        font_color=COLOR_WHITE,
                        highlight_color1=COLOR_GREEN,
-                       highlight_color2=COLOR_ORCHID):
+                       highlight_color2=COLOR_ORCHID,
+                       exact_match_highlight=COLOR_RED):
 
     space_size = font.getsize(" ")[0]
     font_height = font.getsize("A")[1] + 5
@@ -101,18 +104,37 @@ def draw_wrapped_lines(wrapped_lines, draw, font, y_pos,
     for l, line in enumerate(wrapped_lines):
         x_pos = 25
         for t, token in enumerate(line):
-            draw.text((x_pos, y_pos), token, font=font, fill=font_color)
+            w, h = font.getsize(token)
             if wrapped_weights1 and wrapped_weights1[l][t] > 0.:
-                alpha = int(255 * wrapped_weights1[l][t])
-                draw.text((x_pos, y_pos), token, font=font, 
-                          fill=(*highlight_color1, alpha))
-            if wrapped_weights2 and wrapped_weights2[l][t] > 0.:
-                alpha = int(255 * wrapped_weights2[l][t])
-                draw.text((x_pos, y_pos), token, font=font, 
-                          fill=(*highlight_color2, alpha))
+                if wrapped_weights1[l][t] == 1:
+                    draw.rectangle(
+                        (x_pos, y_pos, x_pos + w, y_pos + h), 
+                        fill=exact_match_highlight)
+                    draw.text((x_pos, y_pos), token, font=bold_font, 
+                              #fill=highlight_color1)
+                              fill=ImageColor.getrgb("green"))
+                else:
+                    draw.text((x_pos, y_pos), token, font=font, fill=font_color)
+                    alpha = int(255 * wrapped_weights1[l][t])
+                    draw.text((x_pos, y_pos), token, font=font, 
+                              fill=(*highlight_color1, alpha))
+            elif wrapped_weights2 and wrapped_weights2[l][t] > 0.:
+                if wrapped_weights2[l][t] == 1:
+                    draw.rectangle(
+                        (x_pos, y_pos, x_pos + w, y_pos + h), 
+                        fill=exact_match_highlight)
+                    draw.text((x_pos, y_pos), token, font=bold_font, 
+                            #  fill=highlight_color2)
+                              fill=ImageColor.getrgb("purple"))
+                else:
+                    draw.text((x_pos, y_pos), token, font=font, fill=font_color)
+                    alpha = int(255 * wrapped_weights2[l][t])
+                    draw.text((x_pos, y_pos), token, font=font, 
+                              fill=(*highlight_color2, alpha))
+            else:
+                draw.text((x_pos, y_pos), token, font=font, fill=font_color)
 
-
-            x_pos += font.getsize(token)[0] + space_size
+            x_pos += w + space_size
         y_pos += font_height 
 
      
@@ -125,17 +147,21 @@ def generate_image(path, summary_lines, topics=None,
                    query_highlight_color2=COLOR_ORCHID, 
                    query_color=COLOR_WHITE,
                    highlight_color1=COLOR_GREEN,
-                   highlight_color2=COLOR_ORCHID):
+                   highlight_color2=COLOR_ORCHID,
+                   exact_match_highlight=COLOR_YELLOW,
+                   missing_keywords=None):
 
     image = Image.new('RGBA', (width, height), background_color)
 
     font_size = 17
     font = ImageFont.truetype(
         '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf', 17)
+    bold_font = ImageFont.truetype(
+        '/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf', 17)
     font_height = font.getsize("A")[1] + 5
     draw = ImageDraw.Draw(image)
 
-    draw.text((10, 10), "QUERY TOPICS", font=font, fill=font_color)
+    draw.text((10, 10), "RELATED WORDS", font=font, fill=font_color)
     y_pos = 10 + font_height + 10
 
     if topics:
@@ -169,12 +195,20 @@ def generate_image(path, summary_lines, topics=None,
             highlight_weights1=bullet_highlight_weights1,
             highlight_weights2=bullet_highlight_weights2)
 
-        draw_wrapped_lines(wrapped_lines, draw, font, y_pos, 
+        draw_wrapped_lines(wrapped_lines, draw, font, bold_font, y_pos, 
                            wrapped_weights1=wrapped_weights1,
                            wrapped_weights2=wrapped_weights2,
                            highlight_color1=highlight_color1,
-                           highlight_color2=highlight_color2)
+                           highlight_color2=highlight_color2,
+                           exact_match_highlight=exact_match_highlight)
         y_pos += (len(wrapped_lines) * font_height + 10)
+        
+    draw.line([(0, y_pos + 10), (width, y_pos + 10)], fill=font_color)
+    if missing_keywords:
+        draw.text(
+            (10, y_pos + 30),
+            "WORDS NOT FOUND: " + " ".join(missing_keywords), 
+            font=font, fill=font_color)
 
     if isinstance(path, str):
         path = pathlib.Path(path)
