@@ -25,11 +25,16 @@ def read_translation(path):
     with open(path, "r", encoding="utf8") as fp:
         return [word_tokenize(line) for line in fp if len(line.strip())]
 
-def get_query_content(query):
+def get_query_content(query, keep_constraints=True):
     if "," in query:
         q1, q2 = query.split(",")
-        return [get_query_content(q1)[0], get_query_content(q2)[0]]
-    query = re.sub(r"\[(hyp|evf|syn):(.*?)\]", r" \2 ", query)
+        return [get_query_content(q1, keep_constraints=keep_constraints)[0], 
+                get_query_content(q2, keep_constraints=keep_constraints)[0]]
+    if keep_constraints:
+         query = re.sub(r"\[(hyp|evf|syn):(.*?)\]", r" \2 ", query)
+    else:
+         query = re.sub(r"\[(hyp|evf|syn):(.*?)\]", r" ", query)
+
     if '<' in query:
         query = query.replace('<', '').replace('>', '')
     if '"' in query:
@@ -40,6 +45,8 @@ def get_query_content(query):
     query = re.sub(r"EXAMPLE_OF\((.*?)\)", r"\1", query)
 
     return [query.split()]
+
+
 
 def get_topics(document, query_content, system_context):
     if not system_context["topic_model"]["use_topic_model"]:
@@ -107,21 +114,36 @@ def summarize_example(example, system_context):
     print(example["query"])
     summary_word_budget = system_context["summary_length"]
     query_content = get_query_content(example["query"])
+
+    query_content_no_constraints = get_query_content(
+        example["query"], keep_constraints=False)
     extract_summary = [word_tokenize(line) for line in example["summary_lines"]
                        if len(line.strip())]
     topics, topic_word_count = get_topics(
         extract_summary, query_content, system_context)
     summary_word_budget -= topic_word_count
 
+    query_matches = []
+    query_misses = []
+
+    doc_words = set([w.lower() for s in extract_summary for w in s])
+    for subquery in query_content_no_constraints:
+        for term in subquery:
+            if term.lower() in doc_words:
+                query_matches.append(term)
+            else:
+                query_misses.append(term)
+ 
+
     component1_hl_weights = image_generator.calculate_highlight_weights(
-        query_content[0], extract_summary, 
+        query_content_no_constraints[0], extract_summary, 
         system_context["english_embeddings"]["model"],
         system_context["english_stopwords"]["model"],
         threshold_topk=2)
 
     if len(query_content) == 2:
         component2_hl_weights = image_generator.calculate_highlight_weights(
-            query_content[1], extract_summary, 
+            query_content_no_constraints[1], extract_summary, 
             system_context["english_embeddings"]["model"],
             system_context["english_stopwords"]["model"],
             threshold_topk=2)
@@ -139,7 +161,14 @@ def summarize_example(example, system_context):
     image_generator.generate_image(
         example["output_path"], extract_summary, topics=topics, 
         highlight_weights1=component1_hl_weights,
-        highlight_weights2=component2_hl_weights)
+        highlight_weights2=component2_hl_weights,
+        missing_keywords=query_misses)
+
+    
+    matches_json_path = example["output_path"].replace(".png", ".matches.json")
+    
+    with open(matches_json_path, "w") as fp:
+        fp.write(json.dumps({"query_misses": query_misses, "query_matches": query_matches}))
 
 def summarize_query_result(result, query_data, system_context):
     query_id = query_data["parsed_query"][0]["info"]["queryid"]
@@ -178,6 +207,22 @@ def summarize_query_result(result, query_data, system_context):
             doc_translation, query_content, system_context)
    
     summary_word_budget -= (topic_word_count + 3)
+
+    doc_words = set([w.lower() for s in doc_translation for w in s])
+    query_matches = []
+    query_misses = []
+
+    query_content_no_constraints = get_query_content(
+        query_data["IARPA_query"], keep_constraints=False)
+    for subquery in query_content_no_constraints:
+        for term in subquery:
+            if term.lower() in doc_words:
+                query_matches.append(term)
+            else:
+                query_misses.append(term)
+ 
+    summary_word_budget = summary_word_budget - len(query_misses) - 3
+
     sentence_rankings = []
 
     if system_context["sentence_rankers"]["translation"] or bad_alignment:
@@ -218,14 +263,14 @@ def summarize_query_result(result, query_data, system_context):
     #("\n".join([" ".join(l) for l in extract_summary]))    
 
     component1_hl_weights = image_generator.calculate_highlight_weights(
-        query_content[0], extract_summary, 
+        query_content_no_constraints[0], extract_summary, 
         system_context["english_embeddings"]["model"],
         system_context["english_stopwords"]["model"],
         threshold_topk=2)
 
     if len(query_content) == 2:
         component2_hl_weights = image_generator.calculate_highlight_weights(
-            query_content[1], extract_summary, 
+            query_content_no_constraints[1], extract_summary, 
             system_context["english_embeddings"]["model"],
             system_context["english_stopwords"]["model"],
             threshold_topk=2)
@@ -240,32 +285,23 @@ def summarize_query_result(result, query_data, system_context):
     else:
         component2_hl_weights = None 
 
-    doc_words = set([w.lower() for s in doc_translation for w in s])
-    query_matches = []
-    query_misses = []
-    for subquery in query_content:
-        for term in subquery:
-            if term.lower() in doc_words:
-                query_matches.append(term)
-            else:
-                query_misses.append(term)
-                    
+                   
     image_path = system_context["summary_dir"] / query_id / \
         "{}.png".format(result["doc_id"])
 
     image_generator.generate_image(
         image_path, extract_summary, topics=topics, 
         highlight_weights1=component1_hl_weights,
-        highlight_weights2=component2_hl_weights) 
+        highlight_weights2=component2_hl_weights,
+        missing_keywords=query_misses) 
 
     instructions = summary_instructions.get_instructions(
         query_data["IARPA_query"], query_matches, query_misses)
 
     instructions = {"component_{}".format(i): instr 
                     for i, instr in enumerate(instructions, 1)} 
-    instructions["domain"] = summary_instructions.get_domain_instructions(
-        query_data["domain"]["desc"])
-
+#    instructions["domain"] = summary_instructions.get_domain_instructions(
+#        query_data["domain"]["desc"])
 
     word_list = []
     if topics:
@@ -277,6 +313,8 @@ def summarize_query_result(result, query_data, system_context):
     word_list.append("SUMMARY")
     word_list.extend([w for s in extract_summary for w in s 
                       if not is_punctuation(w)])
+    if len(query_misses):
+        word_list.extend(["WORDS", "NOT", "FOUND"] + query_misses)
 
     if len(word_list) > 100:
         logging.warn(" {}/{} Summary word list > 100 words.".format(
