@@ -28,13 +28,9 @@ def main():
     parser.add_argument(
         "--english-stopwords", required=True, type=str)
     parser.add_argument(
-        "--tagalog-embeddings", required=True, type=str)
+        "--source-embeddings", required=True, type=str)
     parser.add_argument(
-        "--tagalog-counts", required=True, type=str)
-    parser.add_argument(
-        "--swahili-embeddings", required=True, type=str)
-    parser.add_argument(
-        "--swahili-counts", required=True, type=str)
+        "--source-counts", required=True, type=str)
     parser.add_argument(
         "--topic-model-path", required=False, type=str, default=None)
     parser.add_argument("--use-topics", action="store_true", default=False)
@@ -103,14 +99,9 @@ def main():
             "counts": pathlib.Path(args.english_counts),
             "model": None,
         },
-        "tagalog_embeddings": {
-            "path": pathlib.Path(args.tagalog_embeddings),
-            "counts": pathlib.Path(args.tagalog_counts),
-            "model": None,
-        },
-        "swahili_embeddings": {
-            "path": pathlib.Path(args.swahili_embeddings),
-            "counts": pathlib.Path(args.swahili_counts),
+        "source_embeddings": {
+            "path": pathlib.Path(args.source_embeddings),
+            "counts": pathlib.Path(args.source_counts),
             "model": None,
         },
         "sentence_rankers": {
@@ -135,10 +126,8 @@ def main():
         else:
             system_context["topic_model"]["topic_cache"] = {}
 
-    mh.handle_tagalog_embeddings(
-        system_context["tagalog_embeddings"], system_context)
-    mh.handle_swahili_embeddings(
-        system_context["swahili_embeddings"], system_context)
+    mh.handle_source_embeddings(
+        system_context["source_embeddings"], system_context)
     mh.handle_english_stopwords(
         system_context["english_stopwords"], system_context)
     mh.handle_english_embeddings(
@@ -175,11 +164,8 @@ def main():
             elif params["message_type"] == "english_embeddings":
                 mh.handle_english_embeddings(
                     params["message_data"], system_context)
-            elif params["message_type"] == "tagalog_embeddings":
-                mh.handle_tagalog_embeddings(
-                    params["message_data"], system_context)
-            elif params["message_type"] == "swahili_embeddings":
-                mh.handle_swahili_embeddings(
+            elif params["message_type"] == "source_embeddings":
+                mh.handle_source_embeddings(
                     params["message_data"], system_context)
             elif params["message_type"] == "example":
                 mh.summary_handler.summarize_example(

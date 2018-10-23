@@ -37,31 +37,18 @@ def handle_english_embeddings(request_data, system_context):
             system_context["english_embeddings"]["model"] = model
             print("Loading English Embedings: done!") 
 
-def handle_tagalog_embeddings(request_data, system_context):
+def handle_source_embeddings(request_data, system_context):
     if request_data["path"]:
         path = pathlib.Path(request_data["path"])
         counts = pathlib.Path(request_data["counts"])
-        if path != system_context["tagalog_embeddings"]["path"] or \
-                counts != system_context["tagalog_embeddings"]["counts"] or \
-                system_context["tagalog_embeddings"]["model"] is None:
-            print("Loading Tagalog Embedings:\n  emb={}\n  counts={}".format(
+        if path != system_context["source_embeddings"]["path"] or \
+                counts != system_context["source_embeddings"]["counts"] or \
+                system_context["source_embeddings"]["model"] is None:
+            print("Loading Source Embedings:\n  emb={}\n  counts={}".format(
                 path, counts)) 
             model = word_embeddings.load_embeddings(path, counts_path=counts)
-            system_context["tagalog_embeddings"]["model"] = model
-            print("Loading Tagalog Embedings: done!") 
-
-def handle_swahili_embeddings(request_data, system_context):
-    if request_data["path"]:
-        path = pathlib.Path(request_data["path"])
-        counts = pathlib.Path(request_data["counts"])
-        if path != system_context["swahili_embeddings"]["path"] or \
-                counts != system_context["swahili_embeddings"]["counts"] or \
-                system_context["swahili_embeddings"]["model"] is None:
-            print("Loading Swahili Embedings:\n  emb={}\n  counts={}".format(
-                path, counts)) 
-            model = word_embeddings.load_embeddings(path, counts_path=counts)
-            system_context["swahili_embeddings"]["model"] = model
-            print("Loading Swahili Embedings: done!") 
+            system_context["source_embeddings"]["model"] = model
+            print("Loading Source Embedings: done!") 
 
 def handle_lda(request_data, system_context):
     if request_data["path"]:

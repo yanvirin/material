@@ -232,14 +232,11 @@ def summarize_query_result(result, query_data, system_context):
         sentence_rankings.append(ranking) 
 
     if system_context["sentence_rankers"]["source"] and not bad_alignment:
-        if result["language"] == "1A":
-            emb = system_context["swahili_embeddings"]["model"]
-        elif result["language"] == "1B":
-            emb = system_context["tagalog_embeddings"]["model"]
-        else:
-            raise Exception("Bad language! No embeddings for {}".format(
-                result["language"]))
-
+        # result["language"] is the language of the results
+        # but it won't be asserted currently that the source embeddings are
+        # in the appropriate language, assuming that this is the responsibility
+        # of the end user
+        emd = system_context["source_embeddings"]["model"]
         trans_query = get_translated_query(query_data)
         ranking = sentence_ranker.query_embedding_similarity(
             doc_morphology, trans_query, 
