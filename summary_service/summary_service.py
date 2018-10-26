@@ -2,10 +2,21 @@ import logging
 import pathlib
 import argparse
 import socket
+import os
 import traceback
 import message_handlers as mh
 import json
 
+def read_summarizer_conf(working_dir):
+  conf = None
+  for f in os.listdir(working_dir):
+    if f.endswith(".json"):
+      with open("%s\%s" % (working_dir, f)) as r:
+        conf = json.load(r)["summarizer"]
+        break
+  if not conf: 
+    raise Exception("no configuration json file found in %s" % working_dir)
+  return conf
 
 def main():
     parser = argparse.ArgumentParser()
@@ -28,9 +39,9 @@ def main():
     parser.add_argument(
         "--english-stopwords", required=True, type=str)
     parser.add_argument(
-        "--source-embeddings", required=True, type=str)
+        "--source-embeddings-dir", required=True, type=str)
     parser.add_argument(
-        "--source-counts", required=True, type=str)
+        "--working-dir", required=True, type=str)
     parser.add_argument(
         "--topic-model-path", required=False, type=str, default=None)
     parser.add_argument("--use-topics", action="store_true", default=False)
@@ -50,6 +61,12 @@ def main():
 
     args = parser.parse_args()
 
+    # find configuration in the working-dir and read the summarizer object
+    conf = read_summarizer_conf(args.working_dir)
+
+    source_embeddings = "%s/%s.vec" % (args.source_embeddings_dir, conf["language"])
+    source_counts = "%s/%s.freq" % (args.source_embeddings_dir, conf["language"])
+
     logging.getLogger().setLevel(logging.__dict__[args.logging_level.upper()])
 
     summary_dir = pathlib.Path(args.summary_dir)
@@ -60,30 +77,18 @@ def main():
         topic_model_path = pathlib.Path(args.topic_model_path) 
     else:
         topic_model_path = None
-
+    #umd-nmt-v2.1_sent-split-v2.0 , umd-nmt-v2.1_material-asr-[lang]-v5.0
     system_context = {
         "query_processor_path": pathlib.Path(args.query_processor),
         "clir_results_path": pathlib.Path(args.clir_results),
         "nist_data": pathlib.Path(args.nist_data),
         "translation": {
-            "text": {
-                "1A": "umd-nmt-v2.1_sent-split-v2.0",
-                "1B": "umd-nmt-v2.1_sent-split-v2.0"
-            },
-            "audio": {
-                "1A": "umd-nmt-v2.1_material-asr-sw-v5.0/",
-                "1B": "umd-nmt-v2.1_material-asr-tl-v5.0/"
-            },
+            "text": conf["mt_text_version"],
+            "audio": conf["mt_audio_version"].replace("[lang]",conf["language"])
         },
         "morphology": {
-            "text": {
-                "1A": "material-scripts-morph-v3.0_cu-code-switching-v3.0_sent-split-v2.0",
-                "1B": "material-scripts-morph-v3.0_cu-code-switching-v3.0_sent-split-v2.0",
-            },
-            "audio": {
-                "1A": "material-scripts-morph-v3.0_material-asr-sw-v5.0/",
-                "1B": "material-scripts-morph-v3.0_material-asr-tl-v5.0/",
-            },
+            "text":  "material-scripts-morph-v3.0_cu-code-switching-v3.0_sent-split-v2.0",
+            "audio": "material-scripts-morph-v3.0_material-asr-[lang]-v5.0/".replace("[lang]",conf["language"]),
         },
         "topic_model": {
             "path": topic_model_path,
@@ -100,8 +105,8 @@ def main():
             "model": None,
         },
         "source_embeddings": {
-            "path": pathlib.Path(args.source_embeddings),
-            "counts": pathlib.Path(args.source_counts),
+            "path": pathlib.Path(source_embeddings),
+            "counts": pathlib.Path(source_counts),
             "model": None,
         },
         "sentence_rankers": {
