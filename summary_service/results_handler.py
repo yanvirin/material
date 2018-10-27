@@ -1,18 +1,17 @@
 import re
 
-
 def resolve_translation_path(doc_id, language, system_context):
     root_dir = system_context["nist_data"] / language / \
         "IARPA_MATERIAL_BASE-{}".format(language)
     
     for part in ["DEV", "ANALYSIS1", "ANALYSIS2", "EVAL1", "EVAL2", "EVAL3"]:
         text_path = root_dir / part / "text" / "mt_store" / \
-            system_context["translation"]["text"][language] / "{}.txt".format(
+            system_context["translation"]["text"] / "{}.txt".format(
             doc_id)
         if text_path.exists():
             return part, "text", text_path
         audio_path = root_dir / part / "audio" / "mt_store" / \
-            system_context["translation"]["audio"][language] / "{}.txt".format(
+            system_context["translation"]["audio"] / "{}.txt".format(
             doc_id)
         if audio_path.exists():
             return part, "audio", audio_path
@@ -29,11 +28,10 @@ def load_clir_results(clir_results_path, system_context):
             part, source, translation_path = resolve_translation_path(
                 doc_id, language, system_context)
 
-
             morph_path = system_context["nist_data"] / language / \
                 "IARPA_MATERIAL_BASE-{}".format(language) / \
                 part / source / "morphology_store" / \
-                system_context["morphology"][source][language] / \
+                system_context["morphology"][source] / \
                 "{}.txt".format(doc_id)
 
             assert morph_path.exists()
