@@ -15,6 +15,8 @@ def resolve_translation_path(doc_id, language, system_context):
             doc_id)
         if audio_path.exists():
             return part, "audio", audio_path
+        raise Exception("translation failed: text path %s, audio path %s do not exist" % 
+          (text_path, audio_path))
 
 def load_clir_results(clir_results_path, system_context):
     results = []
@@ -34,7 +36,9 @@ def load_clir_results(clir_results_path, system_context):
                 system_context["morphology"][source] / \
                 "{}.txt".format(doc_id)
 
-            assert morph_path.exists()
+            
+            if not morph_path.exists():
+              raise Exception("morph path does not exist: %s" % morph_path)
 
             result = {"doc_id": doc_id, "language": language, 
                       "dataset": part, "source": source, 

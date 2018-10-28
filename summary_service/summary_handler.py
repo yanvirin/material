@@ -236,7 +236,7 @@ def summarize_query_result(result, query_data, system_context):
         # but it won't be asserted currently that the source embeddings are
         # in the appropriate language, assuming that this is the responsibility
         # of the end user
-        emd = system_context["source_embeddings"]["model"]
+        emb = system_context["source_embeddings"]["model"]
         trans_query = get_translated_query(query_data)
         ranking = sentence_ranker.query_embedding_similarity(
             doc_morphology, trans_query, 

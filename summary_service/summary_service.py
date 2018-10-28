@@ -11,7 +11,7 @@ def read_summarizer_conf(working_dir):
   conf = None
   for f in os.listdir(working_dir):
     if f.endswith(".json"):
-      with open("%s\%s" % (working_dir, f)) as r:
+      with open("%s/%s" % (working_dir, f)) as r:
         conf = json.load(r)["summarizer"]
         break
   if not conf: 
@@ -77,7 +77,6 @@ def main():
         topic_model_path = pathlib.Path(args.topic_model_path) 
     else:
         topic_model_path = None
-    #umd-nmt-v2.1_sent-split-v2.0 , umd-nmt-v2.1_material-asr-[lang]-v5.0
     system_context = {
         "query_processor_path": pathlib.Path(args.query_processor),
         "clir_results_path": pathlib.Path(args.clir_results),
@@ -87,8 +86,8 @@ def main():
             "audio": conf["mt_audio_version"].replace("[lang]",conf["language"])
         },
         "morphology": {
-            "text":  "material-scripts-morph-v3.0_cu-code-switching-v3.0_sent-split-v2.0",
-            "audio": "material-scripts-morph-v3.0_material-asr-[lang]-v5.0/".replace("[lang]",conf["language"]),
+            "text":  conf["morph_text_version"],
+            "audio": conf["morph_audio_version"].replace("[lang]",conf["language"]),
         },
         "topic_model": {
             "path": topic_model_path,
