@@ -20,7 +20,7 @@ def renameSub():
 	parser.add_argument("--task", required=True, help="Choose a task", choices=['CLIR','DomainID','E2E','LanguageID'])
 	parser.add_argument("--sub_type", required=True, help="Choose a submission type", choices=['primary','contrastive'])
 	parser.add_argument("--set", help="Choose a queryset (QUERY1: 300, QUERY2: 400, QUERY1QUERY2: 700, QUERY2QUERY3: 1000) OR a domainset (DX: GOV-LIF [1A/1B], DXY: GOV-LIF-BUS-LAW [1A] GOV-LIF-HEA-MIL [1B], DXYZ: GOV-LIF-BUS-LAW-SPO [1A] GOV-LIF-HEA-MIL-SPO [1B])", choices=['QUERY1','QUERY2','QUERY1QUERY2','QUERY2QUERY3','DX','DXY','DXYZ'])
-	parser.add_argument("--lang", required=True, help="Choose a language", choices=['1A','1B'])
+	parser.add_argument("--lang", required=True, help="Choose a language", choices=['1A','1B','1S'])
 	parser.add_argument("--dataset", required=True, help="Choose a dataset", choices=['DEV','ANALYSIS1','DEVANALYSIS1','EVAL1EVAL2','EVAL1EVAL2EVAL3','ANALYSIS1ANALYSIS2'])
 	parser.add_argument("--outpath", help="Path where you want the renamed submission to be copied. By default, it will be copied in the current working directory.")
 	args = parser.parse_args()
