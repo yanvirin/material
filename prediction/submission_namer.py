@@ -55,9 +55,11 @@ def rename_submission(pipeline_data, tar_path, output_dir,
         lang = "1A"
     elif pipeline_data["query_processor"]["target_language"] == "tl":
         lang = "1B"
+    elif pipeline_data["query_processor"]["target_language"] == "so":
+        lang = "1S"
     else:
         raise Exception(
-            "Bad language code! Must be 'sw' or 'tl' but found '{}'".format(
+            "Bad language code! Must be 'sw', 'tl' or 'so' but found '{}'".format(
                 pipeline_data["domain_modeling"]["target_language"]))
             
     queryset = resolve_query_set(
