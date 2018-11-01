@@ -88,10 +88,9 @@ def create_extract_summary(indices, translation, summary_word_budget):
     return summary_lines
 
 def get_translated_query(query_data):
-    trans_data = query_data["translations"][3]
-    assert trans_data["Indri_query"].startswith("#combine(") \
-        and trans_data["Indri_query"].endswith(")")
-    indri_str = trans_data["Indri_query"][9:-1]
+    trans_data = list(filter(lambda x: "indri" in x and x["indri"].startswith("#combine(") and 
+                        x["indri"].endswith(")"), query_data["queries"]))
+    indri_str = trans_data[0]["indri"][9:-1]
 
     results = []
     for item in re.findall(r"(\w+)|#wsyn\((.*?)\)", indri_str):
@@ -244,7 +243,9 @@ def summarize_query_result(result, query_data, system_context):
         sentence_rankings.append(ranking) 
     if system_context["sentence_rankers"]["lexical-expansion-translation"]:
         
-        qestring = query_data["english"]["expanded"][1]["expanded_words"]
+        qestring = None
+        for query in query_data["queries"]:
+          if "expanded_words" in query: qestring = query["expanded_words"]
         query_expansion = [ws.split(":") for ws in qestring.split(";")]
         query_expansion = [(ws[0], float(ws[1])) if len(ws) == 2 else (ws[0], 1.) 
                            for ws in query_expansion]

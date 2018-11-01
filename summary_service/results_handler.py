@@ -21,9 +21,9 @@ def resolve_translation_path(doc_id, language, system_context):
 def load_clir_results(clir_results_path, system_context):
     results = []
     with open(clir_results_path, "r") as fp:
-        header = fp.readline().strip()
         for line in fp:
-            doc_id, relevance_score = line.strip().split()
+            doc_id, decision, relevance_score = line.strip().split()
+            if decision == "N": continue
             relevance_score = float(relevance_score)
             match = re.match(r"MATERIAL_BASE-(\d[A-Z])_\d+", doc_id)
             language = match.groups()[0]

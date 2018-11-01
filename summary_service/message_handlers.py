@@ -95,7 +95,7 @@ def handle_query(request_data, system_context):
     with open(query_processor_path, "r", encoding="utf8") as fp:
         query_data = json.load(fp)
 
-    clir_results_tsv = system_context["clir_results_path"] / "q-{}.tsv".format(
+    clir_results_tsv = system_context["clir_results_path"] / "{}.tsv".format(
         query_id)
 
     results = results_handler.load_clir_results(

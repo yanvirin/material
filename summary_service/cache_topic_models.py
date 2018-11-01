@@ -77,7 +77,7 @@ def main():
         
             query_data = json.loads(qp_path.read_bytes(), encoding="utf8")
             query_id = query_data["query_id"]
-            clir_results_tsv = pathlib.Path(ec_dir) / "q-{}.tsv".format(
+            clir_results_tsv = pathlib.Path(ec_dir) / "{}.tsv".format(
                 query_id)
 
             results = results_handler.load_clir_results(
