@@ -40,8 +40,9 @@ def parse_results_tsv(path):
         data["query_string"] = query_string
         data["domain_string"] = domain_string
         for line in fp:
-            doc_id, score = line.strip().split("\t")
-            results.append({"doc_id": doc_id, "score": score})
+            doc_id, decision, score = line.strip().split("\t")
+            results.append({"doc_id": doc_id, "decision": decision, 
+                            "score": score})
     return data
 
 
@@ -52,37 +53,43 @@ def create_query_tar(input_dir, target_dir, clir_results, run_name):
     for result in clir_results["results"]:
         doc_id = result["doc_id"]
         score = result["score"]
+        decision = result["decision"]
         
-        # Copy image path.
-        source_image_path = input_dir / "{}.png".format(doc_id)
-        target_image_path = target_dir / IMAGE_TEMPLATE.format(
-            team="SCRIPTS", 
-            system=SYSTEM_NAME, 
-            query=clir_results["query_id"], 
-            doc=doc_id)
-        target_image_path.write_bytes(source_image_path.read_bytes())
+        if decision == "N":
+            e2e_results.append(
+                "\t".join([doc_id, decision, score]))
+        else:           
+            # Copy image path.
+            source_image_path = input_dir / "{}.png".format(doc_id)
+            target_image_path = target_dir / IMAGE_TEMPLATE.format(
+                team="SCRIPTS", 
+                system=SYSTEM_NAME, 
+                query=clir_results["query_id"], 
+                doc=doc_id)
+            target_image_path.write_bytes(source_image_path.read_bytes())
+        
+            source_json_path = input_dir / "{}.json".format(doc_id)
+            target_json_path = target_dir / JSON_TEMPLATE.format(
+                team="SCRIPTS", 
+                system=SYSTEM_NAME, 
+                query=clir_results["query_id"], 
+                doc=doc_id)
+            summary_data = json.loads(
+                source_json_path.read_bytes(), encoding="utf8")
     
-        source_json_path = input_dir / "{}.json".format(doc_id)
-        target_json_path = target_dir / JSON_TEMPLATE.format(
-            team="SCRIPTS", 
-            system=SYSTEM_NAME, 
-            query=clir_results["query_id"], 
-            doc=doc_id)
-        summary_data = json.loads(
-            source_json_path.read_bytes(), encoding="utf8")
-
-        summary_data["team_id"] = "SCRIPTS"
-        summary_data["sys_label"] = SYSTEM_NAME
-        summary_data["uuid"] = str(uuid.uuid4())
-        summary_data["query_id"] = clir_results["query_id"]
-        summary_data["document_id"] = doc_id
-        summary_data["run_name"] = run_name
-        summary_data["run_date_time"] = now
-        summary_data["image_uri"] = str(target_image_path.name)
-
-        target_json_path.write_text(
-            json.dumps(summary_data), encoding="utf8")
-        e2e_results.append("\t".join([doc_id, score, target_json_path.name]))
+            summary_data["team_id"] = "SCRIPTS"
+            summary_data["sys_label"] = SYSTEM_NAME
+            summary_data["uuid"] = str(uuid.uuid4())
+            summary_data["query_id"] = clir_results["query_id"]
+            summary_data["document_id"] = doc_id
+            summary_data["run_name"] = run_name
+            summary_data["run_date_time"] = now
+            summary_data["image_uri"] = str(target_image_path.name)
+    
+            target_json_path.write_text(
+                json.dumps(summary_data), encoding="utf8")
+            e2e_results.append(
+                "\t".join([doc_id, decision, score, target_json_path.name]))
 
     e2e_query_tsv = target_dir / "s-{query_id}.tsv".format(**clir_results)
     e2e_query_text = "\n".join([
