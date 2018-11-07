@@ -33,7 +33,7 @@ def validate_results(results_paths, summary_dir):
 def parse_results_tsv(path):
     results = []
     data = {"results": results}
-    with open(path, "r", encoding="utf8") as fp:
+    with open(str(path), "r", encoding="utf8") as fp:
         query_id, query_domain_string = fp.readline().strip().split("\t")
         data["query_id"] = query_id
         query_string, domain_string = query_domain_string.rsplit(":", 1)
@@ -136,7 +136,7 @@ def main():
     for summary_query_dir in summary_dir.glob("query*"):
         query_id = summary_query_dir.name
         
-        clir_results_tsv = results_dir / "q-{}.tsv".format(query_id)
+        clir_results_tsv = results_dir / "{}.tsv".format(query_id)
         clir_results = parse_results_tsv(clir_results_tsv)
         target_dir = package_dir / query_id
         create_query_tar(
