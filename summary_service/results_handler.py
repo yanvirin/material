@@ -15,8 +15,9 @@ def resolve_translation_path(doc_id, language, system_context):
             doc_id)
         if audio_path.exists():
             return part, "audio", audio_path
-        raise Exception("translation failed: text path %s, audio path %s do not exist" % 
-          (text_path, audio_path))
+
+    raise Exception("translation failed: text path %s, audio path %s do not exist" % 
+      (text_path, audio_path))
 
 def load_clir_results(clir_results_path, system_context):
     results = []
