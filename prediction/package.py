@@ -9,7 +9,7 @@ import tarfile
 import os
 
 
-renaming_script_path = "./material_create_submission_filename-v0.1.3.py"
+renaming_script_path = "./material_create_submission_filename-v0.1.6.py"
 #SYSTEM_NAME = "en_src_emb_sim-hl2-kw-umdnmt2_1-morph3_0-asr5_0"
 #SYSTEM_NAME = "EnSrcEmbLexSimHl2Kw"
 SYSTEM_NAME = "SummarizationPhase1"
