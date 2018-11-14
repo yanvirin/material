@@ -260,7 +260,7 @@ def summarize_query_result(result, query_data, system_context):
     extract_summary = []
     for query_part in query_content:
       budget = int(summary_word_budget/len(query_content))
-      partial_summary = summarize_query_part([query_part], budget, doc_translation, 
+      partial_summary = summarize_query_part([query_part], budget, doc_translation, doc_morphology, 
                         bad_alignment, system_context, query_data)
       extract_summary.extend(partial_summary)
       extract_summary.append("")
