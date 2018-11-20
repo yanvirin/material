@@ -8,7 +8,8 @@ import string
 import image_generator
 import summary_instructions
 import logging
-
+import run_compressor
+import traceback
 
 def read_morphology(path):
     data = []
@@ -46,8 +47,6 @@ def get_query_content(query, keep_constraints=True):
 
     return [query.split()]
 
-
-
 def get_topics(document, query_content, system_context):
     if not system_context["topic_model"]["use_topic_model"]:
         return None, 0
@@ -61,6 +60,17 @@ def get_topics(document, query_content, system_context):
         system_context["topic_model"]["max_topic_words"],
         always_highlight=True)
 
+def compress(sentences, constraints, system_context):
+    assert(len(sentences) == len(constraints))
+    assert("model" in system_context["compressor"])
+    compressor = system_context["compressor"]["model"]
+    print("inputs to compressor: %s, %s" % (str(sentences), str(constraints)))
+    try:
+      output = run_compressor.compress(compressor, sentences, constraints)
+    except Exception as e:
+      print("ERROR in compressing ^^^^" + str(e))
+      raise Exception("failed to compress")
+    return output
 def is_punctuation(word):
     for char in word:
         if not char in string.punctuation:
@@ -202,6 +212,10 @@ def summarize_query_part(query_content, summary_word_budget, doc_translation, do
     best_sentence_indices = np.argsort(ranking)
     extract_summary = create_extract_summary(
       best_sentence_indices, doc_translation, summary_word_budget)
+
+    if system_context["compressor"]["use_compressor"]:
+      constraints = [[item for sublist in query_content for item in sublist]]*len(extract_summary)
+      return compress(extract_summary, constraints, system_context)
     return extract_summary
 
 def summarize_query_result(result, query_data, system_context):
@@ -257,14 +271,15 @@ def summarize_query_result(result, query_data, system_context):
  
     summary_word_budget = summary_word_budget - len(query_misses) - 3
 
+    doc_type = "[audio]" if "/audio/" in doc_translation else "[text]"
     extract_summary = []
     for query_part in query_content:
       budget = int(summary_word_budget/len(query_content))
       partial_summary = summarize_query_part([query_part], budget, doc_translation, doc_morphology, 
                         bad_alignment, system_context, query_data)
       extract_summary.extend(partial_summary)
-      extract_summary.append("")
-    del(extract_summary[-1])
+      extract_summary.append("----------------------")
+    if len(extract_summary) > 0: extract_summary.append(doc_type)
 
     component1_hl_weights = image_generator.calculate_highlight_weights(
         query_content_no_constraints[0], extract_summary, 

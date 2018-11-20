@@ -6,6 +6,7 @@ import os
 import traceback
 import message_handlers as mh
 import json
+import run_compressor
 
 def read_summarizer_conf(working_dir):
   conf = None
@@ -51,6 +52,12 @@ def main():
         "--topic-cache", type=str, default=None, required=False)
     parser.add_argument(
         "--use-topic-cache", action="store_true", default=False)
+    parser.add_argument(
+        "--use-compressor", action="store_true", default=False)
+    parser.add_argument(
+        "--compressor-embedding-lookup", type=str, required=False)
+    parser.add_argument(
+        "--compressor-model", type=str, required=False)
     parser.add_argument(
         "--logging-level", required=False, type=str, default="warning",
         choices=["info", "warning", "debug"])
@@ -98,6 +105,11 @@ def main():
             "topic_cache": None,
             "use_topic_cache": args.use_topic_cache,
         },
+        "compressor": {
+            "use_compressor": args.use_compressor,
+            "compressor_embedding_lookup": args.compressor_embedding_lookup,
+            "compressor_model_path": args.compressor_model
+        },
         "english_embeddings": {
             "path": pathlib.Path(args.english_embeddings),
             "counts": pathlib.Path(args.english_counts),
@@ -138,6 +150,7 @@ def main():
         system_context["english_embeddings"], system_context)
     mh.handle_lda(
         system_context["topic_model"], system_context)
+    mh.handle_compressor(system_context["compressor"], system_context)
 
     print("Topic Model:")
     for k, v in system_context["topic_model"].items():

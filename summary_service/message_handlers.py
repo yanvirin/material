@@ -7,7 +7,7 @@ import results_handler
 import json
 import pathlib
 import os
-
+import run_compressor
 
 def handle_logging(request_data, system_context):
     logging.getLogger().setLevel(logging.__dict__[request_data["level"]])
@@ -70,6 +70,14 @@ def handle_lda(request_data, system_context):
         system_context["topic_model"]["max_topic_words"] = request_data[
             "max_topic_words"]
         print("Using Max Topic Words:", request_data["max_topic_words"])
+
+def handle_compressor(request_data, system_context):
+    if request_data["use_compressor"]:
+        system_context["compressor"]["model"] = run_compressor.load_compressor(
+                                          request_data["compressor_model_path"], 
+                                          request_data["compressor_embedding_lookup"])
+        print("Using compressor: %s, %s" % (request_data["compressor_model_path"], 
+                                        request_data["compressor_embedding_lookup"]))
 
 def handle_topic_cache(request_data, system_context):
     if request_data["action"] == "save" and \
