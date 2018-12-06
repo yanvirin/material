@@ -8,7 +8,8 @@ import string
 import image_generator
 import summary_instructions
 import logging
-
+import run_compressor
+import traceback
 
 def read_morphology(path):
     data = []
@@ -46,8 +47,6 @@ def get_query_content(query, keep_constraints=True):
 
     return [query.split()]
 
-
-
 def get_topics(document, query_content, system_context):
     if not system_context["topic_model"]["use_topic_model"]:
         return None, 0
@@ -61,6 +60,17 @@ def get_topics(document, query_content, system_context):
         system_context["topic_model"]["max_topic_words"],
         always_highlight=True)
 
+def compress(sentences, constraints, system_context):
+    assert(len(sentences) == len(constraints))
+    assert("model" in system_context["compressor"])
+    compressor = system_context["compressor"]["model"]
+    print("inputs to compressor: %s, %s" % (str(sentences), str(constraints)))
+    try:
+      output = run_compressor.compress(compressor, sentences, constraints)
+    except Exception as e:
+      print("ERROR in compressing ^^^^" + str(e))
+      raise Exception("failed to compress")
+    return output
 def is_punctuation(word):
     for char in word:
         if not char in string.punctuation:
@@ -169,6 +179,51 @@ def summarize_example(example, system_context):
     with open(matches_json_path, "w") as fp:
         fp.write(json.dumps({"query_misses": query_misses, "query_matches": query_matches}))
 
+def summarize_query_part(query_content, summary_word_budget, doc_translation, doc_morphology,
+                         bad_alignment, system_context, query_data):
+    sentence_rankings = []
+
+    if system_context["sentence_rankers"]["qa"]:
+        for question_word in system_context["qa_question_words"]:
+          ranking = sentence_ranker.query_qa_similarity(
+           doc_translation, query_content, question_word)
+          sentence_rankings.append(ranking)
+    
+    if system_context["sentence_rankers"]["translation"] or bad_alignment:
+        ranking = sentence_ranker.query_embedding_similarity(
+            doc_translation, query_content,
+            system_context["english_embeddings"]["model"])
+        sentence_rankings.append(ranking)
+
+    if system_context["sentence_rankers"]["source"] and not bad_alignment:
+        emb = system_context["source_embeddings"]["model"]
+        trans_query = get_translated_query(query_data)
+        ranking = sentence_ranker.query_embedding_similarity(
+            doc_morphology, trans_query, emb)
+        sentence_rankings.append(ranking)
+    
+    if system_context["sentence_rankers"]["lexical-expansion-translation"]:
+        qestring = None
+        for query in query_data["queries"]:
+          if "expanded_words" in query: qestring = query["expanded_words"]
+        query_expansion = [ws.split(":") for ws in qestring.split(";")]
+        query_expansion = [(ws[0], float(ws[1])) if len(ws) == 2 else (ws[0], 1.)
+                           for ws in query_expansion]
+        query_words = query_data["english"]["words"]
+        ranking = sentence_ranker.query_lexical_similarity(
+            doc_translation, query_content, query_expansion)
+        sentence_rankings.append(ranking)
+
+    ranking = merge_rankings(sentence_rankings)
+    best_sentence_indices = np.argsort(ranking)
+    extract_summary = create_extract_summary(
+      best_sentence_indices, doc_translation, summary_word_budget)
+
+    if system_context["compressor"]["use_compressor"]:
+      constraints = [[item for sublist in query_content for item in sublist]]*len(extract_summary)
+      return compress(extract_summary, constraints, system_context)
+    return extract_summary
+
 def summarize_query_result(result, query_data, system_context):
     query_id = query_data["parsed_query"][0]["info"]["queryid"]
     doc_id = result["doc_id"]
@@ -222,43 +277,23 @@ def summarize_query_result(result, query_data, system_context):
  
     summary_word_budget = summary_word_budget - len(query_misses) - 3
 
-    sentence_rankings = []
+    doc_translation_path = str(result["translation_path"])
+    doc_type = "[audio]" if "/audio/" in doc_translation_path else "[text]" if "/text/" in doc_translation_path else "[unknown]"
+    extract_summary = []
+    if system_context["separated"]:
+      for query_part in query_content:
+        budget = int(summary_word_budget/len(query_content))
+        partial_summary = summarize_query_part([query_part], budget, doc_translation, doc_morphology, 
+                        bad_alignment, system_context, query_data)
+        extract_summary.extend(partial_summary)
+        extract_summary.append("----------------------")
+    else:
+      summary = summarize_query_part(query_content, summary_word_budget, doc_translation, doc_morphology,
+                        bad_alignment, system_context, query_data) 
+      extract_summary.extend(summary)
 
-    if system_context["sentence_rankers"]["translation"] or bad_alignment:
-        ranking = sentence_ranker.query_embedding_similarity(
-            doc_translation, query_content, 
-            system_context["english_embeddings"]["model"])
-        sentence_rankings.append(ranking) 
-
-    if system_context["sentence_rankers"]["source"] and not bad_alignment:
-        # result["language"] is the language of the results
-        # but it won't be asserted currently that the source embeddings are
-        # in the appropriate language, assuming that this is the responsibility
-        # of the end user
-        emb = system_context["source_embeddings"]["model"]
-        trans_query = get_translated_query(query_data)
-        ranking = sentence_ranker.query_embedding_similarity(
-            doc_morphology, trans_query, 
-            emb)
-        sentence_rankings.append(ranking) 
-    if system_context["sentence_rankers"]["lexical-expansion-translation"]:
-        
-        qestring = None
-        for query in query_data["queries"]:
-          if "expanded_words" in query: qestring = query["expanded_words"]
-        query_expansion = [ws.split(":") for ws in qestring.split(";")]
-        query_expansion = [(ws[0], float(ws[1])) if len(ws) == 2 else (ws[0], 1.) 
-                           for ws in query_expansion]
-        query_words = query_data["english"]["words"]
-        ranking = sentence_ranker.query_lexical_similarity(
-            doc_translation, query_content, query_expansion)
-        sentence_rankings.append(ranking)
-
-    ranking = merge_rankings(sentence_rankings)
-    best_sentence_indices = np.argsort(ranking)
-    extract_summary = create_extract_summary(
-        best_sentence_indices, doc_translation, summary_word_budget)
-    #("\n".join([" ".join(l) for l in extract_summary]))    
+    # TODO: to remove, only for testing!
+    if len(extract_summary) > 0: extract_summary.append(doc_type)
 
     component1_hl_weights = image_generator.calculate_highlight_weights(
         query_content_no_constraints[0], extract_summary, 
@@ -298,9 +333,7 @@ def summarize_query_result(result, query_data, system_context):
 
     instructions = {"component_{}".format(i): instr 
                     for i, instr in enumerate(instructions, 1)} 
-#    instructions["domain"] = summary_instructions.get_domain_instructions(
-#        query_data["domain"]["desc"])
-
+    
     word_list = []
     if topics:
         word_list.extend(["QUERY", "TOPICS"])

@@ -6,6 +6,7 @@ import os
 import traceback
 import message_handlers as mh
 import json
+import run_compressor
 
 def read_summarizer_conf(working_dir):
   conf = None
@@ -52,11 +53,22 @@ def main():
     parser.add_argument(
         "--use-topic-cache", action="store_true", default=False)
     parser.add_argument(
+        "--use-compressor", action="store_true", default=False)
+    parser.add_argument(
+        "--separated", action="store_true", default=False)
+    parser.add_argument(
+        "--compressor-embedding-lookup", type=str, required=False)
+    parser.add_argument(
+        "--compressor-model", type=str, required=False)
+    parser.add_argument(
         "--logging-level", required=False, type=str, default="warning",
         choices=["info", "warning", "debug"])
     parser.add_argument("--sentence-rankers", default=["translation"], 
         choices=["translation", "source", "crosslingual", 
-                 "lexical-expansion-translation"], type=str,
+                 "lexical-expansion-translation", "qa"], type=str,
+        nargs="+")
+    parser.add_argument("--qa-question-words", default=["what"],
+        choices=["what", "where", "when", "what-kind", "why", "how", "which"], type=str,
         nargs="+")
 
     args = parser.parse_args()
@@ -78,6 +90,7 @@ def main():
     else:
         topic_model_path = None
     system_context = {
+        "separated": args.separated,
         "query_processor_path": pathlib.Path(args.query_processor),
         "clir_results_path": pathlib.Path(args.clir_results),
         "nist_data": pathlib.Path(args.nist_data),
@@ -98,6 +111,11 @@ def main():
             "topic_cache": None,
             "use_topic_cache": args.use_topic_cache,
         },
+        "compressor": {
+            "use_compressor": args.use_compressor,
+            "compressor_embedding_lookup": args.compressor_embedding_lookup,
+            "compressor_model_path": args.compressor_model
+        },
         "english_embeddings": {
             "path": pathlib.Path(args.english_embeddings),
             "counts": pathlib.Path(args.english_counts),
@@ -113,7 +131,9 @@ def main():
             "source": "source" in args.sentence_rankers,
             "crosslingual": "crosslingual" in args.sentence_rankers,
             "lexical-expansion-translation": "lexical-expansion-translation" in args.sentence_rankers,
+            "qa": "qa" in args.sentence_rankers,
         },
+        "qa_question_words": args.qa_question_words,
         "summary_length": args.length,
         "summary_dir": summary_dir,
         "english_stopwords": {
@@ -138,6 +158,7 @@ def main():
         system_context["english_embeddings"], system_context)
     mh.handle_lda(
         system_context["topic_model"], system_context)
+    mh.handle_compressor(system_context["compressor"], system_context)
 
     print("Topic Model:")
     for k, v in system_context["topic_model"].items():
