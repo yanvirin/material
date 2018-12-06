@@ -183,6 +183,12 @@ def summarize_query_part(query_content, summary_word_budget, doc_translation, do
                          bad_alignment, system_context, query_data):
     sentence_rankings = []
 
+    if system_context["sentence_rankers"]["qa"]:
+        for question_word in system_context["qa_question_words"]:
+          ranking = sentence_ranker.query_qa_similarity(
+           doc_translation, query_content, question_word)
+          sentence_rankings.append(ranking)
+    
     if system_context["sentence_rankers"]["translation"] or bad_alignment:
         ranking = sentence_ranker.query_embedding_similarity(
             doc_translation, query_content,
@@ -195,8 +201,8 @@ def summarize_query_part(query_content, summary_word_budget, doc_translation, do
         ranking = sentence_ranker.query_embedding_similarity(
             doc_morphology, trans_query, emb)
         sentence_rankings.append(ranking)
+    
     if system_context["sentence_rankers"]["lexical-expansion-translation"]:
-
         qestring = None
         for query in query_data["queries"]:
           if "expanded_words" in query: qestring = query["expanded_words"]
@@ -271,14 +277,22 @@ def summarize_query_result(result, query_data, system_context):
  
     summary_word_budget = summary_word_budget - len(query_misses) - 3
 
-    doc_type = "[audio]" if "/audio/" in doc_translation else "[text]"
+    doc_translation_path = str(result["translation_path"])
+    doc_type = "[audio]" if "/audio/" in doc_translation_path else "[text]" if "/text/" in doc_translation_path else "[unknown]"
     extract_summary = []
-    for query_part in query_content:
-      budget = int(summary_word_budget/len(query_content))
-      partial_summary = summarize_query_part([query_part], budget, doc_translation, doc_morphology, 
+    if system_context["separated"]:
+      for query_part in query_content:
+        budget = int(summary_word_budget/len(query_content))
+        partial_summary = summarize_query_part([query_part], budget, doc_translation, doc_morphology, 
                         bad_alignment, system_context, query_data)
-      extract_summary.extend(partial_summary)
-      extract_summary.append("----------------------")
+        extract_summary.extend(partial_summary)
+        extract_summary.append("----------------------")
+    else:
+      summary = summarize_query_part(query_content, summary_word_budget, doc_translation, doc_morphology,
+                        bad_alignment, system_context, query_data) 
+      extract_summary.extend(summary)
+
+    # TODO: to remove, only for testing!
     if len(extract_summary) > 0: extract_summary.append(doc_type)
 
     component1_hl_weights = image_generator.calculate_highlight_weights(
