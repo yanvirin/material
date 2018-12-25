@@ -76,11 +76,15 @@ def is_punctuation(word):
         if not char in string.punctuation:
             return False
     return True
+def summary_length(sen):
+    return len([token for token in sen if not is_punctuation(token)])
 
 def create_extract_summary(indices, translation, summary_word_budget):
 
     word_count = 0
     summary_lines = []
+    if summary_word_budget == 0: return summary_lines
+
     for index in indices:
         summary_line = []
         for token in translation[index]:
@@ -98,9 +102,9 @@ def create_extract_summary(indices, translation, summary_word_budget):
     return summary_lines
 
 def get_translated_query(query_data):
-    trans_data = list(filter(lambda x: "indri" in x and x["indri"].startswith("#combine(") and 
-                        x["indri"].endswith(")"), query_data["queries"]))
-    indri_str = trans_data[0]["indri"][9:-1]
+    trans_data = list(filter(lambda x: "indri" in x and x["indri"].startswith("#combine ( ") and 
+                        x["indri"].endswith(")") and x["type"]=="UMDPSQPhraseBased", query_data["queries"]))
+    indri_str = trans_data[0]["indri"][11:-1]
 
     results = []
     for item in re.findall(r"(\w+)|#wsyn\((.*?)\)", indri_str):
@@ -205,7 +209,8 @@ def summarize_query_part(query_content, summary_word_budget, doc_translation, do
     if system_context["sentence_rankers"]["lexical-expansion-translation"]:
         qestring = None
         for query in query_data["queries"]:
-          if "expanded_words" in query: qestring = query["expanded_words"]
+          if "expanded_words" in query:
+            qestring = query["expanded_words"]
         query_expansion = [ws.split(":") for ws in qestring.split(";")]
         query_expansion = [(ws[0], float(ws[1])) if len(ws) == 2 else (ws[0], 1.)
                            for ws in query_expansion]
@@ -223,6 +228,53 @@ def summarize_query_part(query_content, summary_word_budget, doc_translation, do
       constraints = [[item for sublist in query_content for item in sublist]]*len(extract_summary)
       return compress(extract_summary, constraints, system_context)
     return extract_summary
+
+def summarize(query_content, summary_word_budget, doc_translation, doc_morphology, 
+              bad_alignment, query_data, system_context):
+    extract_summary = []
+    if system_context["separated"] and len(query_content) > 1:
+      for query_part in query_content:
+        partial_summary = summarize_query_part([query_part], summary_word_budget, doc_translation, doc_morphology,
+                        bad_alignment, system_context, query_data)
+        if len(partial_summary) > 0 and partial_summary[0] not in extract_summary:
+          extract_summary.append(partial_summary[0])
+          summary_word_budget -= summary_length(partial_summary[0])
+
+    summary = summarize_query_part(query_content, summary_word_budget*5, doc_translation, doc_morphology,
+                        bad_alignment, system_context, query_data)
+    for sentence in summary:
+      if sentence not in extract_summary and summary_word_budget > 0:
+        temp_sen = []
+        for token in sentence:
+          temp_sen.append(token)
+          if not is_punctuation(token): summary_word_budget -= 1
+          if summary_word_budget == 0: break
+          assert(summary_word_budget > 0)
+        extract_summary.append(temp_sen)
+    return extract_summary
+
+def fix_summary(extract_summary, query_content, summary_word_budget, doc_translation, doc_morphology,
+              bad_alignment, query_data, system_context):
+    bad_sens = [(i,s) for (i,s) in enumerate(extract_summary) if summary_length(s) > summary_word_budget/2]
+    if len(bad_sens) == 0: return extract_summary
+    (bad_sum_idx, bad_sen) = bad_sens[0]
+    assert(len(bad_sens)==1)
+    # try to fix the bad sentence
+    query_terms = set([i.lower() for s in query_content for i in s])
+    punct_idx = -1
+    for i in reversed(range(len(bad_sen))):
+      if is_punctuation(bad_sen[i]): punct_idx = i
+      if bad_sen[i] in query_terms or i < len(bad_sen)/2: break
+    if punct_idx < 0: return extract_summary
+    new_sen = bad_sen[:punct_idx]
+    doc_translation = [new_sen if s == bad_sen else s for s in doc_translation]
+    new_summary = summarize(query_content, summary_word_budget, doc_translation, doc_morphology,
+              bad_alignment, query_data, system_context)
+    new_sens = [(i,s) for (i,s) in enumerate(new_summary) if s == new_sen]
+    if len(new_sens) == 0 or new_sens[0][0] != bad_sum_idx: return extract_summary
+    if len(new_summary) == len(extract_summary): return extract_summary
+    print("summary was fixed with splitting.")
+    return new_summary
 
 def summarize_query_result(result, query_data, system_context):
     query_id = query_data["parsed_query"][0]["info"]["queryid"]
@@ -277,23 +329,17 @@ def summarize_query_result(result, query_data, system_context):
  
     summary_word_budget = summary_word_budget - len(query_misses) - 3
 
-    doc_translation_path = str(result["translation_path"])
-    doc_type = "[audio]" if "/audio/" in doc_translation_path else "[text]" if "/text/" in doc_translation_path else "[unknown]"
-    extract_summary = []
-    if system_context["separated"]:
-      for query_part in query_content:
-        budget = int(summary_word_budget/len(query_content))
-        partial_summary = summarize_query_part([query_part], budget, doc_translation, doc_morphology, 
-                        bad_alignment, system_context, query_data)
-        extract_summary.extend(partial_summary)
-        extract_summary.append("----------------------")
-    else:
-      summary = summarize_query_part(query_content, summary_word_budget, doc_translation, doc_morphology,
-                        bad_alignment, system_context, query_data) 
-      extract_summary.extend(summary)
+    #doc_translation_path = str(result["translation_path"])
+    #doc_type = "[audio]" if "/audio/" in doc_translation_path else "[text]" if "/text/" in doc_translation_path else "[unknown]"
+    extract_summary = summarize(query_content, summary_word_budget, doc_translation, doc_morphology,
+              bad_alignment, query_data, system_context)
 
-    # TODO: to remove, only for testing!
-    if len(extract_summary) > 0: extract_summary.append(doc_type)
+    if system_context["split"]:
+      extract_summary = fix_summary(extract_summary, query_content, summary_word_budget, 
+                                    doc_translation, doc_morphology, bad_alignment, 
+                                    query_data, system_context)
+
+    # if len(extract_summary) > 0: extract_summary.append(doc_type)
 
     component1_hl_weights = image_generator.calculate_highlight_weights(
         query_content_no_constraints[0], extract_summary, 
@@ -348,8 +394,8 @@ def summarize_query_result(result, query_data, system_context):
         word_list.extend(["WORDS", "NOT", "FOUND"] + query_misses)
 
     if len(word_list) > 100:
-        logging.warn(" {}/{} Summary word list > 100 words.".format(
-            query_id, doc_id))
+        logging.warn(" {}/{} Summary word list > 100 words: {}".format(
+            query_id, doc_id, len(word_list)))
 
     meta = {"word_list": word_list,
             "instructions": instructions}

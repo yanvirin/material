@@ -57,6 +57,8 @@ def main():
     parser.add_argument(
         "--separated", action="store_true", default=False)
     parser.add_argument(
+        "--split", action="store_true", default=False)
+    parser.add_argument(
         "--compressor-embedding-lookup", type=str, required=False)
     parser.add_argument(
         "--compressor-model", type=str, required=False)
@@ -91,6 +93,7 @@ def main():
         topic_model_path = None
     system_context = {
         "separated": args.separated,
+        "split": args.split,
         "query_processor_path": pathlib.Path(args.query_processor),
         "clir_results_path": pathlib.Path(args.clir_results),
         "nist_data": pathlib.Path(args.nist_data),
