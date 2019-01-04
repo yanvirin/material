@@ -10,6 +10,7 @@ import summary_instructions
 import logging
 import run_compressor
 import traceback
+import os
 
 def read_morphology(path):
     data = []
@@ -60,6 +61,14 @@ def get_topics(document, query_content, system_context):
         system_context["topic_model"]["max_topic_words"],
         always_highlight=True)
 
+def get_topic_header(doc_id, system_context):
+    topic_header_path = "%s/%s" % (system_context["topic_headers"], doc_id + ".topics")
+    topic_header = []
+    if os.path.isfile(topic_header_path):
+      with open(topic_header_path) as tf:
+        topic_header = tf.readlines()[0].split(" ")
+    return topic_header, summary_length(topic_header)
+
 def compress(sentences, constraints, system_context):
     assert(len(sentences) == len(constraints))
     assert("model" in system_context["compressor"])
@@ -71,11 +80,13 @@ def compress(sentences, constraints, system_context):
       print("ERROR in compressing ^^^^" + str(e))
       raise Exception("failed to compress")
     return output
+
 def is_punctuation(word):
     for char in word:
         if not char in string.punctuation:
             return False
     return True
+
 def summary_length(sen):
     return len([token for token in sen if not is_punctuation(token)])
 
@@ -229,9 +240,10 @@ def summarize_query_part(query_content, summary_word_budget, doc_translation, do
       return compress(extract_summary, constraints, system_context)
     return extract_summary
 
-def summarize(query_content, summary_word_budget, doc_translation, doc_morphology, 
+def summarize(query_content, domain_id_sen, summary_word_budget, doc_translation, doc_morphology, 
               bad_alignment, query_data, system_context):
-    extract_summary = []
+    extract_summary = [domain_id_sen] if domain_id_sen else []
+    summary_word_budget -= summary_length(domain_id_sen)
     if system_context["separated"] and len(query_content) > 1:
       for query_part in query_content:
         partial_summary = summarize_query_part([query_part], summary_word_budget, doc_translation, doc_morphology,
@@ -253,7 +265,7 @@ def summarize(query_content, summary_word_budget, doc_translation, doc_morpholog
         extract_summary.append(temp_sen)
     return extract_summary
 
-def fix_summary(extract_summary, query_content, summary_word_budget, doc_translation, doc_morphology,
+def fix_summary(extract_summary, query_content, domain_id_sen, summary_word_budget, doc_translation, doc_morphology,
               bad_alignment, query_data, system_context):
     bad_sens = [(i,s) for (i,s) in enumerate(extract_summary) if summary_length(s) > summary_word_budget/2]
     if len(bad_sens) == 0: return extract_summary
@@ -268,17 +280,20 @@ def fix_summary(extract_summary, query_content, summary_word_budget, doc_transla
     if punct_idx < 0: return extract_summary
     new_sen = bad_sen[:punct_idx]
     doc_translation = [new_sen if s == bad_sen else s for s in doc_translation]
-    new_summary = summarize(query_content, summary_word_budget, doc_translation, doc_morphology,
+    new_summary = summarize(query_content, domain_id_sen, summary_word_budget, doc_translation, doc_morphology,
               bad_alignment, query_data, system_context)
     new_sens = [(i,s) for (i,s) in enumerate(new_summary) if s == new_sen]
     if len(new_sens) == 0 or new_sens[0][0] != bad_sum_idx: return extract_summary
-    if len(new_summary) == len(extract_summary): return extract_summary
+    #if len(new_summary) == len(extract_summary): return extract_summary
     print("summary was fixed with splitting.")
     return new_summary
 
 def summarize_query_result(result, query_data, system_context):
     query_id = query_data["parsed_query"][0]["info"]["queryid"]
+    domain_id = query_data["domain"]["domain_id"]
     doc_id = result["doc_id"]
+
+    domain_id_scores = system_context["domain_id"][domain_id] if "domain_id" in system_context else None
 
     logging.info(" summarizing {} - {}".format(query_id, doc_id))
 
@@ -298,8 +313,8 @@ def summarize_query_result(result, query_data, system_context):
     query_content = get_query_content(query_data["IARPA_query"])
     logging.info(" query_content: {}".format(str(query_content) ))
     
-    if system_context["topic_model"]["use_topic_model"] and \
-            system_context["topic_model"]["use_topic_cache"]:
+    '''if system_context["topic_model"]["use_topic_model"]:
+      if system_context["topic_model"]["use_topic_cache"]:
         cache = system_context["topic_model"]["topic_cache"]
         key = "{}-{}".format(query_id, doc_id)
         if key in cache:
@@ -308,11 +323,13 @@ def summarize_query_result(result, query_data, system_context):
             topics, topic_word_count = get_topics(
                 doc_translation, query_content, system_context)
             cache[key] = (topics, topic_word_count)
-    else:
+      else:
         topics, topic_word_count = get_topics(
-            doc_translation, query_content, system_context)
+            doc_translation, query_content, system_context)'''
+
+    topic_header, topic_word_count = get_topic_header(doc_id, system_context)
    
-    summary_word_budget -= (topic_word_count + 3)
+    summary_word_budget -= (topic_word_count+1)
 
     doc_words = set([w.lower() for s in doc_translation for w in s])
     query_matches = []
@@ -329,13 +346,16 @@ def summarize_query_result(result, query_data, system_context):
  
     summary_word_budget = summary_word_budget - len(query_misses) - 3
 
+    domain_id_sen = doc_translation[np.argmax(domain_id_scores)] if \
+                    domain_id_scores and len(domain_id_scores) == len(doc_translation) else []
+
     #doc_translation_path = str(result["translation_path"])
     #doc_type = "[audio]" if "/audio/" in doc_translation_path else "[text]" if "/text/" in doc_translation_path else "[unknown]"
-    extract_summary = summarize(query_content, summary_word_budget, doc_translation, doc_morphology,
+    extract_summary = summarize(query_content, domain_id_sen, summary_word_budget, doc_translation, doc_morphology,
               bad_alignment, query_data, system_context)
 
     if system_context["split"]:
-      extract_summary = fix_summary(extract_summary, query_content, summary_word_budget, 
+      extract_summary = fix_summary(extract_summary, query_content, domain_id_sen, summary_word_budget, 
                                     doc_translation, doc_morphology, bad_alignment, 
                                     query_data, system_context)
 
@@ -369,7 +389,7 @@ def summarize_query_result(result, query_data, system_context):
         "{}.png".format(result["doc_id"])
 
     image_generator.generate_image(
-        image_path, extract_summary, topics=topics, 
+        image_path, extract_summary, topics=topic_header, 
         highlight_weights1=component1_hl_weights,
         highlight_weights2=component2_hl_weights,
         missing_keywords=query_misses) 
@@ -381,11 +401,12 @@ def summarize_query_result(result, query_data, system_context):
                     for i, instr in enumerate(instructions, 1)} 
     
     word_list = []
-    if topics:
+    '''if topics:
         word_list.extend(["QUERY", "TOPICS"])
         for topic in topics:
             word_list.extend(topic["query"])
-            word_list.extend(topic["topic_words"])
+            word_list.extend(topic["topic_words"])'''
+    word_list.extend(topic_header)
 
     word_list.append("SUMMARY")
     word_list.extend([w for s in extract_summary for w in s 

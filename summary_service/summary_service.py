@@ -63,6 +63,10 @@ def main():
     parser.add_argument(
         "--compressor-model", type=str, required=False)
     parser.add_argument(
+        "--topic-headers", type=str, required=False)
+    parser.add_argument(
+        "--domain-id", type=str, required=False)
+    parser.add_argument(
         "--logging-level", required=False, type=str, default="warning",
         choices=["info", "warning", "debug"])
     parser.add_argument("--sentence-rankers", default=["translation"], 
@@ -94,6 +98,9 @@ def main():
     system_context = {
         "separated": args.separated,
         "split": args.split,
+        "separated": args.separated,
+        "split": args.split,
+        "topic_headers": args.topic_headers,
         "query_processor_path": pathlib.Path(args.query_processor),
         "clir_results_path": pathlib.Path(args.clir_results),
         "nist_data": pathlib.Path(args.nist_data),

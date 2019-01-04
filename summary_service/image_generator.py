@@ -95,12 +95,13 @@ def draw_wrapped_lines(wrapped_lines, draw, font, bold_font, y_pos,
                        font_color=COLOR_WHITE,
                        highlight_color1=COLOR_GREEN,
                        highlight_color2=COLOR_ORCHID,
-                       exact_match_highlight=COLOR_RED):
+                       exact_match_highlight=COLOR_RED,
+                       bullet = True):
 
     space_size = font.getsize(" ")[0]
     font_height = font.getsize("A")[1] + 5
 
-    draw.text((10, y_pos), "\u2022", font=font, fill=font_color)
+    if bullet: draw.text((10, y_pos), "\u2022", font=font, fill=font_color)
     for l, line in enumerate(wrapped_lines):
         x_pos = 25
         for t, token in enumerate(line):
@@ -161,17 +162,22 @@ def generate_image(path, summary_lines, topics=None,
     font_height = font.getsize("A")[1] + 5
     draw = ImageDraw.Draw(image)
 
-    draw.text((10, 10), "RELATED WORDS", font=font, fill=font_color)
+    #draw.text((10, 10), "RELATED WORDS", font=font, fill=font_color)
     y_pos = 10 + font_height + 10
 
     if topics:
-        for t, topic in enumerate(topics):
-            hlc = query_highlight_color1 if t == 0 else query_highlight_color2
-            draw_topic(
-                topic, draw, font, y_pos,
-                query_color=query_color,
-                query_highlight_color=hlc)
-            y_pos += font_height
+        wrapped_lines, wrapped_weights1, wrapped_weights2 = wrap_line(
+            topics, width - 25, font, 
+            highlight_weights1=None,
+            highlight_weights2=None)
+        draw_wrapped_lines(wrapped_lines, draw, font, bold_font, y_pos,
+                           wrapped_weights1=wrapped_weights1,
+                           wrapped_weights2=wrapped_weights2,
+                           highlight_color1=highlight_color1,
+                           highlight_color2=highlight_color2,
+                           exact_match_highlight=exact_match_highlight,
+                           bullet = False)
+        y_pos += (len(wrapped_lines) * font_height + 10)
         y_pos += 20
         draw.line([(0, y_pos), (width, y_pos)], fill=font_color)
         y_pos += 20
