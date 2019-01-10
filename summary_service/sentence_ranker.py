@@ -3,7 +3,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 import logging
 from collections import Counter
 from sklearn.feature_extraction import DictVectorizer
-from allennlp.predictors.predictor import Predictor
 import math
 
 def query_embedding_similarity(document, query, embeddings):
@@ -39,10 +38,7 @@ def query_lexical_similarity(document, query, query_expansion=None):
     ranks = np.argsort(top_indices)
     return ranks
 
-def query_qa_similarity(document, query, question_word):
-    
-    predictor = Predictor.from_path(
-                "https://s3-us-west-2.amazonaws.com/allennlp/models/bidaf-model-2017.09.15-charpad.tar.gz")
+def query_qa_similarity(document, query, question_word, predictor):
     
     question = " ".join(question_word.split("-")) + " is " + " and ".join(
                [" ".join(sub_query) for sub_query in query]) + " ?"

@@ -7,6 +7,7 @@ import traceback
 import message_handlers as mh
 import json
 import run_compressor
+from allennlp.predictors.predictor import Predictor
 
 def read_summarizer_conf(working_dir):
   conf = None
@@ -121,6 +122,8 @@ def main():
             "topic_cache": None,
             "use_topic_cache": args.use_topic_cache,
         },
+        "qa_predictor": Predictor.from_path("https://s3-us-west-2.amazonaws.com/allennlp/models/bidaf-model-2017.09.15-charpad.tar.gz") \
+                        if "qa" in args.sentence_rankers else None,
         "compressor": {
             "use_compressor": args.use_compressor,
             "compressor_embedding_lookup": args.compressor_embedding_lookup,

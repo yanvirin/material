@@ -23,9 +23,12 @@ def read_morphology(path):
                 data.append([])
     return data
 
+def clean_oov(line):
+    return line.replace("<OOV>","").replace("<oov>","")
+
 def read_translation(path):
     with open(path, "r", encoding="utf8") as fp:
-        return [word_tokenize(line) for line in fp if len(line.strip())]
+        return [word_tokenize(clean_oov(line)) for line in fp if len(line.strip())]
 
 def get_query_content(query, keep_constraints=True):
     if "," in query:
@@ -114,7 +117,8 @@ def create_extract_summary(indices, translation, summary_word_budget):
 
 def get_translated_query(query_data):
     trans_data = list(filter(lambda x: "indri" in x and x["indri"].startswith("#combine ( ") and 
-                        x["indri"].endswith(")") and x["type"]=="UMDPSQPhraseBased", query_data["queries"]))
+                        x["indri"].endswith(")") and x["type"]=="UMDPSQPhraseBasedGVCC", query_data["queries"]))
+    assert(len(trans_data)>0)
     indri_str = trans_data[0]["indri"][11:-1]
 
     results = []
@@ -199,9 +203,10 @@ def summarize_query_part(query_content, summary_word_budget, doc_translation, do
     sentence_rankings = []
 
     if system_context["sentence_rankers"]["qa"]:
+        qa_predictor = system_context["qa_predictor"]
         for question_word in system_context["qa_question_words"]:
           ranking = sentence_ranker.query_qa_similarity(
-           doc_translation, query_content, question_word)
+           doc_translation, query_content, question_word, qa_predictor)
           sentence_rankings.append(ranking)
     
     if system_context["sentence_rankers"]["translation"] or bad_alignment:

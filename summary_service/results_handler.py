@@ -5,12 +5,12 @@ def resolve_translation_path(doc_id, language, system_context):
         "IARPA_MATERIAL_BASE-{}".format(language)
     
     for part in ["DEV", "ANALYSIS1", "ANALYSIS2", "EVAL1", "EVAL2", "EVAL3"]:
-        text_path = root_dir / part / "text" / "mt_store" / \
+        text_path = root_dir / part / "text" / \
             system_context["translation"]["text"] / "{}.txt".format(
             doc_id)
         if text_path.exists():
             return part, "text", text_path
-        audio_path = root_dir / part / "audio" / "mt_store" / \
+        audio_path = root_dir / part / "audio" / \
             system_context["translation"]["audio"] / "{}.txt".format(
             doc_id)
         if audio_path.exists():
