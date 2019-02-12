@@ -1,27 +1,11 @@
 import os, json, sys, time
 from multiprocessing import Process, Queue, Lock
-import rouge_papier
-
-TEMP_BASE = "adsdscsdSDDDDSDCSDcsdcaghcsgckdjnkerh424r2"
-
-def write_content(content, path):
-  with open(path, "w") as w:
-    w.write(content)
-
-def temp_filename(suffix):
-  return "/dev/shm/"+TEMP_BASE+"_"+str(os.getpid())+"_"+suffix
-
-def clean_tempfiles():
-  os.system("rm /dev/shm/"+TEMP_BASE+"*")
+from eval_rouge import RougeScorer
 
 def create_labels(queue):
-
-  config_path = temp_filename(".config")
-  summary_path = temp_filename(".summary")
-
   while True:
     try:
-       doc_id, summary_length, inputs_dir, human_abstracts_dir, labels_dir = queue.get()
+       doc_id, summary_length, inputs_dir, human_abstracts_dir, labels_dir, scorer = queue.get()
        with open("%s/%s.json" % (inputs_dir, doc_id)) as r: d = json.load(r)
        inputs = d["inputs"]
        best = []
@@ -36,15 +20,13 @@ def create_labels(queue):
            if candidate not in best and length + candidate_length <= summary_length:
              path_data = []
              new_best = best + [candidate]
-             summary = "\n".join([x[1] for x in new_best])
-             write_content(summary, summary_path)
-             path_data.append([summary_path, ["%s/%s.spl" % (human_abstracts_dir, doc_id)]])
-             config_text = rouge_papier.util.make_simple_config_text(path_data)
-             write_content(config_text, config_path)
-             df = rouge_papier.compute_rouge(
-                 config_path, max_ngram=2, lcs=True,
-                 remove_stopwords=True, length=summary_length)
-             r1, _, _ = df.values[0].tolist()
+             summary = [x[1] for x in new_best]
+             abstracts_paths = ["%s/%s"%(human_abstracts_dir,f) for f in os.listdir(human_abstracts_dir) if f.startswith(doc_id+".")]
+             r1 = 0.0
+             for p in abstracts_paths:
+               with open(p) as r:
+                 abstract = [l.strip() for l in r.readlines()]
+                 r1 += scorer.eval_rouge(summary, abstract)/len(abstracts_paths)
              if r1 > best_score:
                best_score = r1
                best_candidate = candidate
@@ -65,16 +47,19 @@ def create_labels(queue):
 
 if __name__ == "__main__":
 
-  JOBS = 10
+  JOBS = 4
  
   inputs_dir = sys.argv[1]
   human_abstracts_dir = sys.argv[2]
   labels_dir = sys.argv[3]
   summary_length = int(sys.argv[4])
+  stopwords_path = sys.argv[5]
 
+  scorer = RougeScorer(max_words = summary_length)
+  
   os.system("mkdir -p %s" % labels_dir)
 
-  queue = Queue(100)
+  queue = Queue(5)
 
   for i in range(JOBS):
     p = Process(target=create_labels, args=[queue])
@@ -84,10 +69,8 @@ if __name__ == "__main__":
   files = os.listdir(inputs_dir)
   for f in files:
     doc_id, ext = f.split(".")
-    queue.put((doc_id, summary_length, inputs_dir, human_abstracts_dir, labels_dir))
+    queue.put((doc_id, summary_length, inputs_dir, human_abstracts_dir, labels_dir, scorer))
 
   while(not queue.empty()):
     print("waiting for consumers to finish...")
     time.sleep(5)
-
-  clean_tempfiles()
