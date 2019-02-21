@@ -8,6 +8,8 @@ import json
 import pathlib
 import os
 import run_compressor
+import multipart_summary_handler
+
 
 def handle_logging(request_data, system_context):
     logging.getLogger().setLevel(logging.__dict__[request_data["level"]])
@@ -113,8 +115,11 @@ def handle_query(request_data, system_context):
     query_dir.mkdir(parents=True, exist_ok=True)
 
     for result in results:
-        summary_handler.summarize_query_result(
-            result, query_data, system_context)
-
+        if system_context["use_generic_handler"]:
+            summary_handler.summarize_query_result(
+                result, query_data, system_context)
+        else:
+            multipart_summary_handler.summarize_query_result(
+                result, query_data, system_context)
     os.system("chmod -R 777 {}".format(str(query_dir)))
 

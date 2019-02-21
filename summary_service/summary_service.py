@@ -7,7 +7,6 @@ import traceback
 import message_handlers as mh
 import json
 import run_compressor
-from allennlp.predictors.predictor import Predictor
 
 def read_summarizer_conf(working_dir):
   conf = None
@@ -35,15 +34,16 @@ def main():
     parser.add_argument(
         "--summary-dir", required=True, type=str)
     parser.add_argument(
-        "--english-embeddings", required=True, type=str)
+        "--english-embeddings", required=False, type=str)
     parser.add_argument(
-        "--english-counts", required=True, type=str)
+        "--english-counts", required=False, type=str)
     parser.add_argument(
         "--english-stopwords", required=True, type=str)
     parser.add_argument(
-        "--source-embeddings-dir", required=True, type=str)
+        "--source-embeddings-dir", required=False, type=str)
     parser.add_argument(
         "--working-dir", required=True, type=str)
+    parser.add_argument("--topic-headers", type=pathlib.Path, default=None)
     parser.add_argument(
         "--topic-model-path", required=False, type=str, default=None)
     parser.add_argument("--use-topics", action="store_true", default=False)
@@ -64,10 +64,6 @@ def main():
     parser.add_argument(
         "--compressor-model", type=str, required=False)
     parser.add_argument(
-        "--topic-headers", type=str, required=False)
-    parser.add_argument(
-        "--domain-id", type=str, required=False)
-    parser.add_argument(
         "--logging-level", required=False, type=str, default="warning",
         choices=["info", "warning", "debug"])
     parser.add_argument("--sentence-rankers", default=["translation"], 
@@ -77,14 +73,25 @@ def main():
     parser.add_argument("--qa-question-words", default=["what"],
         choices=["what", "where", "when", "what-kind", "why", "how", "which"], type=str,
         nargs="+")
-
+    parser.add_argument("--morph-server-port", type=str, required=True)
+    parser.add_argument("--morph-client-path", type=pathlib.Path, required=True)
+    parser.add_argument("--use-generic-handler", 
+                        action="store_true", default=False)
+    parser.add_argument("--domain-handler", type=str, default="none",
+                        choices=["petra", "apoorv", "none"])
     args = parser.parse_args()
 
     # find configuration in the working-dir and read the summarizer object
     conf = read_summarizer_conf(args.working_dir)
 
-    source_embeddings = "%s/%s.vec" % (args.source_embeddings_dir, conf["language"])
-    source_counts = "%s/%s.freq" % (args.source_embeddings_dir, conf["language"])
+    if args.source_embeddings_dir:
+        source_embeddings = pathlib.Path("%s/%s.vec" % (args.source_embeddings_dir, conf["language"]))
+        source_counts = pathlib.Path("%s/%s.freq" % (args.source_embeddings_dir, conf["language"]))
+    else:
+        source_embeddings = None
+        source_counts = None
+
+    
 
     logging.getLogger().setLevel(logging.__dict__[args.logging_level.upper()])
 
@@ -97,14 +104,13 @@ def main():
     else:
         topic_model_path = None
     system_context = {
+        "use_generic_handler": args.use_generic_handler,
         "separated": args.separated,
         "split": args.split,
-        "separated": args.separated,
-        "split": args.split,
-        "topic_headers": args.topic_headers,
         "query_processor_path": pathlib.Path(args.query_processor),
         "clir_results_path": pathlib.Path(args.clir_results),
         "nist_data": pathlib.Path(args.nist_data),
+        "topic_headers": args.topic_headers,
         "translation": {
             "text": conf["mt_text_version"],
             "audio": conf["mt_audio_version"].replace("[lang]",conf["language"])
@@ -122,21 +128,19 @@ def main():
             "topic_cache": None,
             "use_topic_cache": args.use_topic_cache,
         },
-        "qa_predictor": Predictor.from_path("https://s3-us-west-2.amazonaws.com/allennlp/models/bidaf-model-2017.09.15-charpad.tar.gz") \
-                        if "qa" in args.sentence_rankers else None,
         "compressor": {
             "use_compressor": args.use_compressor,
             "compressor_embedding_lookup": args.compressor_embedding_lookup,
             "compressor_model_path": args.compressor_model
         },
         "english_embeddings": {
-            "path": pathlib.Path(args.english_embeddings),
-            "counts": pathlib.Path(args.english_counts),
+            "path": pathlib.Path(args.english_embeddings) if args.english_embeddings else None,
+            "counts": pathlib.Path(args.english_counts) if args.english_counts else None,
             "model": None,
         },
         "source_embeddings": {
-            "path": pathlib.Path(source_embeddings),
-            "counts": pathlib.Path(source_counts),
+            "path": source_embeddings,
+            "counts": source_counts,
             "model": None,
         },
         "sentence_rankers": {
@@ -153,8 +157,16 @@ def main():
             "path": pathlib.Path(args.english_stopwords),
             "model": None,
         },
+        "morph_server_port": args.morph_server_port,
+        "morph_client_path": args.morph_client_path,
     }
-    
+   
+    if args.domain_handler in ["petra", "apoorv"]:
+        system_context["domain_id_path"] = {
+            "text": conf["domain_id_text_version"],
+            "audio": conf["domain_id_audio_version"]}
+    system_context["domain_handler"] = args.domain_handler
+ 
     if system_context["topic_model"]["use_topic_cache"]:
         if system_context["topic_model"]["topic_cache_path"].exists():
             system_context["topic_model"]["topic_cache"] = json.loads(
@@ -163,12 +175,14 @@ def main():
         else:
             system_context["topic_model"]["topic_cache"] = {}
 
-    mh.handle_source_embeddings(
-        system_context["source_embeddings"], system_context)
+    if system_context["source_embeddings"]:
+        mh.handle_source_embeddings(
+            system_context["source_embeddings"], system_context)
     mh.handle_english_stopwords(
         system_context["english_stopwords"], system_context)
-    mh.handle_english_embeddings(
-        system_context["english_embeddings"], system_context)
+    if system_context["english_embeddings"]:
+        mh.handle_english_embeddings(
+            system_context["english_embeddings"], system_context)
     mh.handle_lda(
         system_context["topic_model"], system_context)
     mh.handle_compressor(system_context["compressor"], system_context)
@@ -179,6 +193,7 @@ def main():
             print(k, v)
     print("Sentence Rankers:")
     print(system_context["sentence_rankers"])
+    print("DOMAIN HANDLER:", system_context["domain_handler"])
     print("Loaded server on port {} ...".format(args.port))
 
     # start the server and listen to summarization requests

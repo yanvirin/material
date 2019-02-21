@@ -45,6 +45,9 @@ class WordEmbeddingDict(object):
                 sentence_embeddings.append(sent_emb)
         return np.vstack(sentence_embeddings)
 
+    def __contains__(self, item):
+        return item in self.word_to_index_
+
 
 def load_word_weights(counts_path, smoothing=1e-3):
     if smoothing <= 0:

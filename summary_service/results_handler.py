@@ -19,6 +19,19 @@ def resolve_translation_path(doc_id, language, system_context):
     raise Exception("translation failed: text path %s, audio path %s do not exist" % 
       (text_path, audio_path))
 
+def resolve_domain_id_path(doc_id, language, system_context, part, source):
+    root_dir = system_context["nist_data"] / language / \
+        "IARPA_MATERIAL_BASE-{}".format(language)
+
+    if system_context["domain_handler"] == "apoorv":
+        path = root_dir / part / source / "domainIdentification_store" / \
+            system_context["domain_id_path"][source] / "{}.json".format(doc_id)
+    else:
+        path = root_dir / part / source / "domainIdentification_store" / \
+            system_context["domain_id_path"][source] / \
+            "sentence-predictions.csv"
+    return path
+
 def load_clir_results(clir_results_path, system_context):
     results = []
     with open(clir_results_path, "r") as fp:
@@ -30,6 +43,12 @@ def load_clir_results(clir_results_path, system_context):
             language = match.groups()[0]
             part, source, translation_path = resolve_translation_path(
                 doc_id, language, system_context)
+            
+            if system_context["domain_handler"] != "none":
+                domain_id_path = resolve_domain_id_path(
+                    doc_id, language, system_context, part, source)
+            else:
+                domain_id_path = None
 
             morph_path = system_context["nist_data"] / language / \
                 "IARPA_MATERIAL_BASE-{}".format(language) / \
@@ -44,6 +63,7 @@ def load_clir_results(clir_results_path, system_context):
             result = {"doc_id": doc_id, "language": language, 
                       "dataset": part, "source": source, 
                       "translation_path": translation_path,
+                      "domain_id_path": domain_id_path, 
                       "morphology_path": morph_path}
             results.append(result)
     return results

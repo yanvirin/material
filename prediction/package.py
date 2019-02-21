@@ -81,7 +81,7 @@ def create_query_tar(input_dir, target_dir, clir_results, run_name):
             summary_data["document_id"] = doc_id
             summary_data["run_name"] = run_name
             summary_data["run_date_time"] = now
-            summary_data["image_uri"] = str(target_image_path.name)
+            summary_data["image_filename"] = str(target_image_path.name)
     
             target_json_path.write_text(
                 json.dumps(summary_data), encoding="utf8")
