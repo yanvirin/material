@@ -12,7 +12,9 @@ STOPWORDS = set(stopwords.words('english') + \
 
 def score_petra_sentences(sentences, domain_id, embeddings):
     dm = {"GOV": "government", "BUS": "business", "LAW": "law",
-          "REL": "religion", "MIL": "military"}
+          "REL": "religion", "MIL": "military",
+          "LIF": "lifestyle", "SPO": "sports",
+          "HEA": "health"}
     domain_emb = embeddings[dm[domain_id]]
 
     all_scores = []
@@ -32,11 +34,15 @@ def score_petra_sentences(sentences, domain_id, embeddings):
 def petra_domain(result, system_context, domain_id, morph_path, port, 
                  query_data, colors, budget):
 
+
     domain_map = {"Government-And-Politics": "GOV", 
                   'Business-And-Commerce': "BUS", 
                   'Law-And-Order': "LAW", 
                   'Military': "MIL", 
-                  'Religion': "REL"}
+                  'Religion': "REL",
+	          'Lifestyle': "LIF",
+                  'Sports': "SPO",
+                  'Physical-And-Mental-Health': "HEA"}
     doc_id = result["doc_id"]
     with open(result["domain_id_path"], "r") as fp:
         headers = fp.readline().strip().split(",")[1:]
@@ -94,7 +100,10 @@ def petra_domain(result, system_context, domain_id, morph_path, port,
     excerpt_string = tokens2string(morph)
 
     dm = {"GOV": "government", "BUS": "business", "LAW": "law",
-          "REL": "religion", "MIL": "military"}
+          "REL": "religion", "MIL": "military",
+          "LIF": "lifestyle", "SPO": 'Sports',
+          "HEA": 'Physical-And-Mental-Health'}
+
     return {"type": "domain",
             "tokens": morph,
             "excerpt_string": excerpt_string,
