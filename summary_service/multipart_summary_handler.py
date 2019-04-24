@@ -33,7 +33,7 @@ def annotate_morphology(result, system_context, port):
         result["document_tokens_flat"], 
         system_context["morph_client_path"],
         port,
-        "ENG")
+        "EN")
 #    doc_morph_flat = [t for s in doc_morph for t in s]
 #    result["document_morphology"] = doc_morph
     result["document_morphology_flat"] = doc_morph

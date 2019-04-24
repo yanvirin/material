@@ -2,9 +2,9 @@ import re
 
 def resolve_translation_path(doc_id, language, system_context):
     root_dir = system_context["nist_data"] / language / \
-        "IARPA_MATERIAL_BASE-{}".format(language)
+        "IARPA_MATERIAL_OP1-{}".format(language)
     
-    for part in ["DEV", "ANALYSIS1", "ANALYSIS2", "EVAL1", "EVAL2", "EVAL3"]:
+    for part in ["DEV", "ANALYSIS", "ANALYSIS1", "ANALYSIS2", "EVAL1", "EVAL2", "EVAL3"]:
         text_path = root_dir / part / "text" / \
             system_context["translation"]["text"] / "{}.txt".format(
             doc_id)
@@ -21,7 +21,7 @@ def resolve_translation_path(doc_id, language, system_context):
 
 def resolve_domain_id_path(doc_id, language, system_context, part, source):
     root_dir = system_context["nist_data"] / language / \
-        "IARPA_MATERIAL_BASE-{}".format(language)
+        "IARPA_MATERIAL_OP1-{}".format(language)
 
     if system_context["domain_handler"] == "apoorv":
         path = root_dir / part / source / "domainIdentification_store" / \
@@ -39,7 +39,7 @@ def load_clir_results(clir_results_path, system_context):
             doc_id, decision, relevance_score = line.strip().split()
             if decision == "N": continue
             relevance_score = float(relevance_score)
-            match = re.match(r"MATERIAL_BASE-(\d[A-Z])_\d+", doc_id)
+            match = re.match(r"MATERIAL_[0-9A-Z]+-(\d[A-Z])_\d+", doc_id)
             language = match.groups()[0]
             part, source, translation_path = resolve_translation_path(
                 doc_id, language, system_context)
@@ -51,7 +51,7 @@ def load_clir_results(clir_results_path, system_context):
                 domain_id_path = None
 
             morph_path = system_context["nist_data"] / language / \
-                "IARPA_MATERIAL_BASE-{}".format(language) / \
+                "IARPA_MATERIAL_OP1-{}".format(language) / \
                 part / source / "morphology_store" / \
                 system_context["morphology"][source] / \
                 "{}.txt".format(doc_id)

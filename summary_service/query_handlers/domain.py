@@ -1,6 +1,7 @@
 import numpy as np
 import morphology_client
 import json
+import os
 from .matching_util import tokens2string, sim
 from nltk.corpus import stopwords
 STOPWORDS = set(stopwords.words('english') + \
@@ -34,7 +35,12 @@ def score_petra_sentences(sentences, domain_id, embeddings):
 def petra_domain(result, system_context, domain_id, morph_path, port, 
                  query_data, colors, budget):
 
-
+    '''if not os.path.isfile(result["domain_id_path"]):
+        return {"type": "domain",
+                "tokens": morph,
+                "excerpt_string": "",
+                "message": "",
+                "message_color": "yellow"}'''
     domain_map = {"Government-And-Politics": "GOV", 
                   'Business-And-Commerce': "BUS", 
                   'Law-And-Order': "LAW", 
@@ -83,7 +89,7 @@ def petra_domain(result, system_context, domain_id, morph_path, port,
         tokens,
         morph_path,
         port,
-        "ENG")
+        "EN")
     for i, t in enumerate(morph):
         t["highlight"] = False
         t["nl"] = t["sstart"] and i > 0
@@ -143,7 +149,7 @@ def domain(result, system_context, domain_id, morph_path, port, query_data,
         tokens,
         morph_path,
         port,
-        "ENG")
+        "EN")
     for i, t in enumerate(morph):
         t["highlight"] = False
         t["nl"] = t["sstart"] and i > 0

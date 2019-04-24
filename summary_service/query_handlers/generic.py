@@ -46,12 +46,13 @@ def generic(result, query_data, system_context, budget, color):
         for query in query_data["query_expansions"]:
           if "expanded_words" in query:
             qestring = query["expanded_words"]
-        query_expansion = [ws.split(":") for ws in qestring.split(";")]
-        query_expansion = [(ws[0], float(ws[1])) if len(ws) == 2 else (ws[0], 1.)
+        if qestring:
+          query_expansion = [ws.split(":") for ws in qestring.split(";")]
+          query_expansion = [(ws[0], float(ws[1])) if len(ws) == 2 else (ws[0], 1.)
                            for ws in query_expansion]
-        ranking = sentence_ranker.query_lexical_similarity(
+          ranking = sentence_ranker.query_lexical_similarity(
             doc_translation, query_content, query_expansion)
-        sentence_rankings.append(ranking)
+          sentence_rankings.append(ranking)
 
     ranking = merge_rankings(sentence_rankings)
     best_sentence_indices = np.argsort(ranking)
@@ -234,7 +235,7 @@ def fix_summary(extract_summary, query_content, domain_id_sen, summary_word_budg
 
 def get_translated_query(query_data):
     trans_data = list(filter(lambda x: "indri" in x and x["indri"].startswith("#combine ( ") and 
-                        x["indri"].endswith(")") and x["type"]=="UMDPSQPhraseBasedGVCC", query_data["queries"]))
+                        x["indri"].endswith(")") and x["type"]=="PSQ_SMT-BUILD+ParaCrawl-en2lt-word-to-word-v1", query_data["queries"]))
     assert(len(trans_data)>0)
     indri_str = trans_data[0]["indri"][11:-1]
 

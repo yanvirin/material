@@ -40,7 +40,7 @@ def _parse_component(query_string, qd, morph_path, morph_port):
         query_data["constraint_token_morphology"] = get_query_morph(
             cons_tokens, 
             morph_path,
-            morph_port, "ENG")
+            morph_port, "EN")
     else:
         query_data["constraint_type"] = None
         query_data["constraint_string"] = None
@@ -81,7 +81,7 @@ def _parse_component(query_string, qd, morph_path, morph_port):
         query_data["query_token_morphology"] = get_query_morph(
             query_data["query_tokens"], 
             morph_path,
-            morph_port, "ENG")
+            morph_port, "EN")
 
     else:    
         query_data["morphology_constraint"] = None
@@ -93,7 +93,7 @@ def _parse_component(query_string, qd, morph_path, morph_port):
                 query_tokens, 
                 morph_path,
                 morph_port,
-                "ENG")
+                "EN")
             query_data["query_string"] = query_string[1:-1]
         else:
             query_data["is_phrase"] = False
@@ -103,7 +103,7 @@ def _parse_component(query_string, qd, morph_path, morph_port):
                 query_tokens, 
                 morph_path,
                 morph_port, 
-                "ENG")
+                "EN")
             query_data["query_string"] = query_string
 
     query_data["query_type"] = categorize(query_data) 

@@ -54,6 +54,7 @@ def get_morph(document, client_path, port_num, lang):
                 tok["consume_space"] = True
             else:
                 tok["consume_space"] = False
+    
     return doc_morph
 
 def get_query_morph(query_tokens, client_path, port_num, lang):
@@ -61,6 +62,7 @@ def get_query_morph(query_tokens, client_path, port_num, lang):
 
     raw_output = check_output(
         ["java", "-jar", client_path, port_num, lang, " ".join(query_tokens)])
+    raw_output = raw_output.decode("utf-8")
     data = json.loads(raw_output)
     m = [t for s in data for t in s]
     for t in m:

@@ -91,8 +91,6 @@ def main():
         source_embeddings = None
         source_counts = None
 
-    
-
     logging.getLogger().setLevel(logging.__dict__[args.logging_level.upper()])
 
     summary_dir = pathlib.Path(args.summary_dir)

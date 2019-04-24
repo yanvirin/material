@@ -6,7 +6,7 @@ class WordEmbeddingDict(object):
     def __init__(self, word_to_index, index_to_word, embeddings, weights=None):
         self.word_to_index_ = word_to_index   
         self.index_to_word_ = index_to_word
-        self.embeddings_ = embeddings 
+        self.embeddings_ = embeddings
         self.missing_embedding_ = np.array([0.] * embeddings.shape[1])
         self.weights_ = weights
 
@@ -81,6 +81,5 @@ def load_embeddings(embeddings_path, counts_path=None, smoothing=1e-3):
     if counts_path:
         word_weights = load_word_weights(counts_path, smoothing=smoothing)
         weights = [word_weights[w] for w in word_list]
-
     return WordEmbeddingDict(word_map, word_list, np.array(embeddings),
                              weights=weights)
