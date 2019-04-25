@@ -159,6 +159,8 @@ def main():
         "morph_client_path": args.morph_client_path,
     }
    
+    # YV: override for now the domain_handler based on wether domain id text path exists in the summarizer conf
+    args.domain_handler = args.domain_handler if args.domain_hanlder == "none" or "domain_id_text_version" in conf else "none"
     if args.domain_handler in ["petra", "apoorv"]:
         system_context["domain_id_path"] = {
             "text": conf["domain_id_text_version"],
