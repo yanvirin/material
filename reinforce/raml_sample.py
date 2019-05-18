@@ -3,6 +3,7 @@ from itertools import combinations
 from multiprocessing import Process, Queue, cpu_count
 from eval_rouge import RougeScorer
 from collections import defaultdict
+from collections import Counter
 '''
 Holds the needed parameters to run a task
 of extracting scored summary candidates
@@ -54,21 +55,42 @@ def sparse2dense(spl, n):
 # this is the consumer side which takes
 # tasks out of the queue and processes them
 def work(wid, queue, args, ids2refs, stopwords):
+  total = 0
+  n = 0
   while True:
     task = queue.get()
+    distribution = Counter()
     if task is None:
       break
     st = time.time()
-    process(task.doc_id, task.sentences, ids2refs, stopwords, task.labels, args)
+    process(task.doc_id, task.sentences, ids2refs, stopwords, task.labels, args, distribution)
     print("finished process %d, task: %s, time: %f" % (wid, task, time.time() - st))
+    n += 1
+    total += get_percentile(0.95, distribution)
   queue.put(None)
+  print("avg. summaries: %f" % (total/n))
 
 # the method which actually runs the logic of processing
 # one document by extracting all possible combinations of sentences
 # and computing their rouge scores with the appropriate human refference
 def hash_value(value):
   return abs(hash(str(value)))%1000000
-def process(doc_id, sentences, ids2refs, stopwords, labels, args):
+
+def update_count(value, counter):
+  value = int(value*1000)
+  counter[value] += 1
+
+def get_percentile(percentile, distribution):
+  min_v = min(distribution.keys())
+  max_v = max(distribution.keys())
+  th = (max_v - min_v)*percentile
+  s = 0
+  for key in distribution:
+    if distribution[key] >= th + min_v:
+      s += distribution[key]
+  return s
+
+def process(doc_id, sentences, ids2refs, stopwords, labels, args, distribution):
   
   top_k = args.top_k
   n = args.n
@@ -89,6 +111,7 @@ def process(doc_id, sentences, ids2refs, stopwords, labels, args):
     summary = [sentences[i] for i in comb]
     assert(len(summary)==n)
     r1 = scorer.eval_rouge(summary, ref_dist, word_count = word_count)
+    update_count(r1, distribution)
     if not args.informative or not hash_value(r1) in s:
       q += 1
       beam.add(comb, r1)
@@ -168,7 +191,7 @@ if __name__ == "__main__":
     print("testing stopwords for 'a' and 'and' inclusion: %s and %s" % ("a" in stopwords, "and" in stopwords))
   
   # crete the pool of workers
-  NUMBER_OF_PROCESSES = cpu_count()
+  NUMBER_OF_PROCESSES = 5
   queue = Queue(NUMBER_OF_PROCESSES*2)
   workers = [Process(target=work, args=(i, queue, args, ids2refs, stopwords))
                         for i in range(NUMBER_OF_PROCESSES)]

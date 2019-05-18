@@ -81,7 +81,7 @@ def evaluate_method(inputs_path, abs_dir, output_dir,
         config_path = manager.create_temp_file(config_text)
         df, conf = rouge_papier.compute_rouge(
                 config_path, max_ngram=2, lcs=True, 
-                remove_stopwords=True,
+                remove_stopwords=False,
                 length=summary_length, return_conf=True)
         df.index = ids + ["average"]
             #df = pd.concat([df[:-1].sort_index(), df[-1:]], axis=0)

@@ -53,7 +53,6 @@ if __name__ == "__main__":
   human_abstracts_dir = sys.argv[2]
   labels_dir = sys.argv[3]
   summary_length = int(sys.argv[4])
-  stopwords_path = sys.argv[5]
 
   scorer = RougeScorer(max_words = summary_length)
   
